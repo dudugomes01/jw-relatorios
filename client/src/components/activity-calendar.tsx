@@ -269,6 +269,7 @@ export function ActivityCalendar({
           activities={getDayActivities(selectedDay)}
           date={selectedDay}
           onActivityDeleted={() => setSelectedDay(null)}
+          onActivityEdit={handleActivityEdit}
         />
       )}
     </Card>

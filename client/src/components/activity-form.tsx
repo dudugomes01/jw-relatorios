@@ -56,15 +56,21 @@ const ActivityIcons = {
 interface ActivityFormProps {
   onSave?: () => void;
   initialDate: Date;
+  activityToEdit?: Activity | null;
 }
 
-export function ActivityForm({ onSave, initialDate }: ActivityFormProps) {
+export function ActivityForm({ onSave, initialDate, activityToEdit }: ActivityFormProps) {
   const { toast } = useToast();
 
   // Form setup
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: activityToEdit ? {
+      type: activityToEdit.type,
+      date: new Date(activityToEdit.date),
+      hours: activityToEdit.hours,
+      notes: activityToEdit.notes || ""
+    } : {
       type: ActivityType.CAMPO,
       date: initialDate,
       hours: 1,
@@ -80,7 +86,11 @@ export function ActivityForm({ onSave, initialDate }: ActivityFormProps) {
   // Save activity mutation
   const saveMutation = useMutation({
     mutationFn: async (data: InsertActivity) => {
-      const res = await apiRequest("POST", "/api/activities", data);
+      const method = activityToEdit ? "PUT" : "POST";
+      const url = activityToEdit 
+        ? `/api/activities/${activityToEdit.id}` 
+        : "/api/activities";
+      const res = await apiRequest(method, url, data);
       return res.json();
     },
     onSuccess: () => {

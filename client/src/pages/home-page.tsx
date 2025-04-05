@@ -99,7 +99,11 @@ export default function HomePage() {
           {/* Activity Form Dialog */}
           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
             <DialogContent className="sm:max-w-[425px]">
-              <ActivityForm onSave={handleActivitySaved} initialDate={selectedDate} /> {/* Changed to selectedDate */}
+              <ActivityForm 
+                onSave={handleActivitySaved} 
+                initialDate={selectedDate}
+                activityToEdit={activityToEdit} 
+              /> {/* Changed to selectedDate */}
             </DialogContent>
           </Dialog>
         </div>

@@ -114,6 +114,7 @@ export function ActivityCalendar({
   onDayClick
 }: ActivityCalendarProps) {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [activityToEdit, setActivityToEdit] = useState<Activity | null>(null);
 
   // Create calendar for month
   const month = startOfMonth(date);
@@ -148,14 +149,27 @@ export function ActivityCalendar({
   };
 
   const handleActivityEdit = (activity: Activity) => {
-    // TODO: Implement edit functionality
-    console.log('Editar atividade:', activity);
+    setActivityToEdit(activity);
+    if (onDayClick) {
+      onDayClick(new Date(activity.date));
+    }
+    setSelectedDay(null);
   };
 
   const handleActivityDeleted = async (activityId: number) => {
-    queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/activities/month"] });
-    setSelectedDay(null);
+    try {
+      const response = await fetch(`/api/activities/${activityId}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/activities/month"] });
+        setSelectedDay(null);
+      }
+    } catch (error) {
+      console.error('Erro ao excluir atividade:', error);
+    }
   };
 
   return (

@@ -57,12 +57,23 @@ export const updateUserSchema = createInsertSchema(users).pick({
   role: true,
 });
 
-export const insertActivitySchema = createInsertSchema(activities).pick({
-  type: true,
-  hours: true,
-  date: true,
-  notes: true,
-});
+export const insertActivitySchema = createInsertSchema(activities)
+  .pick({
+    type: true,
+    hours: true,
+    date: true,
+    notes: true,
+  })
+  .extend({
+    type: z.enum([
+      ActivityType.CAMPO,
+      ActivityType.TESTEMUNHO,
+      ActivityType.CARTAS,
+      ActivityType.ESTUDO
+    ], {
+      errorMap: () => ({ message: "Tipo de atividade inválido" })
+    })
+  });
 
 // Type exports
 export type InsertUser = z.infer<typeof insertUserSchema>;

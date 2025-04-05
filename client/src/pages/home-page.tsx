@@ -18,8 +18,9 @@ export default function HomePage() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date()); // Changed to selectedDate
-  const { year, month } = getCurrentMonthYear(selectedDate); // Changed to selectedDate
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [activityToEdit, setActivityToEdit] = useState<Activity | null>(null);
+  const { year, month } = getCurrentMonthYear(selectedDate);
 
   // Fetch activities for the current month
   const { data: activities = [] } = useQuery<Activity[]>({
@@ -88,9 +89,13 @@ export default function HomePage() {
           {/* Calendar View */}
           <ActivityCalendar 
             activities={activities}
-            date={selectedDate} // Changed to selectedDate
+            date={selectedDate}
             onDateChange={handleDateChange}
             onDayClick={openActivityForm}
+            onActivityEdit={(activity) => {
+              setActivityToEdit(activity);
+              setIsFormOpen(true);
+            }}
           />
 
           {/* Activity List */}

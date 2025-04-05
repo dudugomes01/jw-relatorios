@@ -1,4 +1,3 @@
-
 import { activities, users, type User, type InsertUser, type Activity, type InsertActivity, type UpdateUser } from "@shared/schema";
 import session from "express-session";
 import Database from "better-sqlite3";
@@ -40,6 +39,7 @@ export interface IStorage {
   getActivities(userId: number): Promise<Activity[]>;
   getActivitiesByMonth(userId: number, year: number, month: number): Promise<Activity[]>;
   getActivity(id: number): Promise<Activity | undefined>;
+  deleteActivity(id: number): Promise<void>; // Added deleteActivity function
   sessionStore: session.SessionStore;
 }
 
@@ -66,15 +66,15 @@ export class SqliteStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const result = db.prepare(
-      'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?) RETURNING *'
-    ).get(insertUser.username, insertUser.email, insertUser.password, 'publicador');
+      'INSERT INTO users (username, email, password, firstName, lastName, role) VALUES (?, ?, ?, ?, ?, ?) RETURNING *' // Added firstName and lastName
+    ).get(insertUser.username, insertUser.email, insertUser.password, insertUser.firstName, insertUser.lastName, 'publicador');
     return result;
   }
 
   async updateUser(id: number, updates: UpdateUser): Promise<User | undefined> {
     return db.prepare(
-      'UPDATE users SET role = ? WHERE id = ? RETURNING *'
-    ).get(updates.role, id);
+      'UPDATE users SET firstName = ?, lastName = ?, role = ? WHERE id = ? RETURNING *' // Added firstName and lastName
+    ).get(updates.firstName, updates.lastName, updates.role, id);
   }
 
   async createActivity(userId: number, insertActivity: InsertActivity): Promise<Activity> {
@@ -98,6 +98,10 @@ export class SqliteStorage implements IStorage {
 
   async getActivity(id: number): Promise<Activity | undefined> {
     return db.prepare('SELECT * FROM activities WHERE id = ?').get(id);
+  }
+
+  async deleteActivity(id: number): Promise<void> {
+    await db.prepare('DELETE FROM activities WHERE id = ?').run(id);
   }
 }
 

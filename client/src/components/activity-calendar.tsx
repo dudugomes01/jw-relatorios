@@ -40,30 +40,57 @@ interface ActivityCalendarProps {
   onDayClick?: (date: Date) => void;
 }
 
+// Modal Component (Placeholder - needs implementation)
+function DayActivitiesDialog({ isOpen, onClose, activities, date, onActivityDeleted }: any) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-white p-4 rounded-lg shadow-lg">
+        <h2 className="text-lg font-bold mb-2">Atividades em {format(date, 'dd/MM/yyyy', { locale: ptBR })}</h2>
+        <ul>
+          {activities.map((activity:any) => (
+            <li key={activity.id} className="mb-2">
+              <p>{ActivityLabels[activity.type]}: {activity.hours}h - {activity.description}</p>
+              <button onClick={() => onActivityDeleted(activity.id)}>Excluir</button>
+            </li>
+          ))}
+        </ul>
+        <button onClick={onClose} className="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+          Fechar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 export function ActivityCalendar({ 
   activities,
   date,
   onDateChange,
   onDayClick
 }: ActivityCalendarProps) {
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+
   // Create calendar for month
   const month = startOfMonth(date);
   const monthEnd = endOfMonth(month);
   const days = eachDayOfInterval({ start: month, end: monthEnd });
-  
+
   // Go to previous month
   const previousMonth = useCallback(() => {
     onDateChange(subMonths(date, 1));
   }, [date, onDateChange]);
-  
+
   // Go to next month
   const nextMonth = useCallback(() => {
     onDateChange(addMonths(date, 1));
   }, [date, onDateChange]);
-  
+
   // Week days
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-  
+
   // Get day activities by date string
   const getDayActivities = (day: Date) => {
     const dayStr = format(day, "yyyy-MM-dd");
@@ -72,12 +99,10 @@ export function ActivityCalendar({
       return format(activityDate, "yyyy-MM-dd") === dayStr;
     });
   };
-  
+
   // Handle day click
   const handleDayClick = (day: Date) => {
-    if (onDayClick) {
-      onDayClick(day);
-    }
+    setSelectedDay(day);
   };
 
   return (
@@ -114,12 +139,12 @@ export function ActivityCalendar({
           {Array.from({ length: getDay(month) }).map((_, index) => (
             <div key={`empty-start-${index}`} className="bg-white px-2 py-3 h-24" />
           ))}
-          
+
           {/* Month days */}
           {days.map((day) => {
             const dayActivities = getDayActivities(day);
             const isCurrentDay = isToday(day);
-            
+
             return (
               <div
                 key={day.toString()}
@@ -138,7 +163,7 @@ export function ActivityCalendar({
                 >
                   {format(day, "d")}
                 </time>
-                
+
                 {/* Day's activities */}
                 <div className="mt-2">
                   {dayActivities.slice(0, 3).map((activity, index) => (
@@ -152,7 +177,7 @@ export function ActivityCalendar({
                       {ActivityLabels[activity.type as keyof typeof ActivityLabels]}: {activity.hours}h
                     </div>
                   ))}
-                  
+
                   {/* More indicator for more than 3 activities */}
                   {dayActivities.length > 3 && (
                     <div className="text-xs text-gray-500 truncate">
@@ -163,13 +188,22 @@ export function ActivityCalendar({
               </div>
             );
           })}
-          
+
           {/* Empty cells for days after the end of the month */}
           {Array.from({ length: 6 - getDay(monthEnd) }).map((_, index) => (
             <div key={`empty-end-${index}`} className="bg-white px-2 py-3 h-24" />
           ))}
         </div>
       </CardContent>
+      {selectedDay && (
+        <DayActivitiesDialog
+          isOpen={true}
+          onClose={() => setSelectedDay(null)}
+          activities={getDayActivities(selectedDay)}
+          date={selectedDay}
+          onActivityDeleted={() => setSelectedDay(null)}
+        />
+      )}
     </Card>
   );
 }

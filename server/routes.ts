@@ -108,6 +108,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(activity);
   });
 
+  app.delete("/api/activities/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+    
+    const activityId = parseInt(req.params.id);
+    if (isNaN(activityId)) {
+      return res.status(400).json({ message: "ID de atividade inválido" });
+    }
+    
+    const activity = await storage.getActivity(activityId);
+    if (!activity) {
+      return res.status(404).json({ message: "Atividade não encontrada" });
+    }
+    
+    if (activity.userId !== req.user.id) {
+      return res.status(403).json({ message: "Acesso não autorizado" });
+    }
+    
+    await storage.deleteActivity(activityId);
+    res.sendStatus(200);
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

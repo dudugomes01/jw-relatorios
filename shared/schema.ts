@@ -27,8 +27,8 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  firstName: text("firstName"),
-  lastName: text("lastName"),
+  firstName: text("firstName").notNull().default(""),
+  lastName: text("lastName").notNull().default(""),
   role: text("role").notNull().default(UserRole.PUBLICADOR),
 });
 
@@ -47,16 +47,22 @@ export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   email: true,
   password: true,
+  firstName: true,
+  lastName: true,
 }).extend({
   username: z.string().min(3).max(20).regex(/^[a-z]+$/, {
     message: "Username must contain only lowercase letters without special characters"
   }),
   email: z.string().email({ message: "Invalid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  firstName: z.string().min(1, {message: "First Name is required"}),
+  lastName: z.string().min(1, {message: "Last Name is required"}),
 });
 
 export const updateUserSchema = createInsertSchema(users).pick({
   role: true,
+  firstName: true,
+  lastName: true,
 });
 
 export const insertActivitySchema = createInsertSchema(activities)

@@ -14,6 +14,8 @@ db.exec(`
     username TEXT UNIQUE NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
+    firstName TEXT,
+    lastName TEXT,
     role TEXT NOT NULL DEFAULT 'publicador'
   );
 

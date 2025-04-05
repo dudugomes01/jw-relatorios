@@ -55,10 +55,10 @@ const ActivityIcons = {
 // Activity form component
 interface ActivityFormProps {
   onSave?: () => void;
-  initialDate?: Date;
+  initialDate: Date;
 }
 
-export function ActivityForm({ onSave, initialDate = new Date() }: ActivityFormProps) {
+export function ActivityForm({ onSave, initialDate }: ActivityFormProps) {
   const { toast } = useToast();
 
   // Form setup

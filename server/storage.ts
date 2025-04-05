@@ -1,102 +1,102 @@
+
 import { activities, users, type User, type InsertUser, type Activity, type InsertActivity, type UpdateUser } from "@shared/schema";
 import session from "express-session";
+import Database from "better-sqlite3";
 import createMemoryStore from "memorystore";
 
 const MemoryStore = createMemoryStore(session);
+const db = new Database("database.sqlite");
 
-// Interface for storage operations
+// Criar tabelas se não existirem
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'publicador'
+  );
+
+  CREATE TABLE IF NOT EXISTS activities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    hours DECIMAL(4,1) NOT NULL,
+    date TEXT NOT NULL,
+    notes TEXT,
+    FOREIGN KEY (userId) REFERENCES users(id)
+  );
+`);
+
 export interface IStorage {
-  // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: UpdateUser): Promise<User | undefined>;
-  
-  // Activity operations
   createActivity(userId: number, activity: InsertActivity): Promise<Activity>;
   getActivities(userId: number): Promise<Activity[]>;
   getActivitiesByMonth(userId: number, year: number, month: number): Promise<Activity[]>;
   getActivity(id: number): Promise<Activity | undefined>;
-  
-  // Session store
   sessionStore: session.SessionStore;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private activities: Map<number, Activity>;
+export class SqliteStorage implements IStorage {
   sessionStore: session.SessionStore;
-  currentUserId: number;
-  currentActivityId: number;
 
   constructor() {
-    this.users = new Map();
-    this.activities = new Map();
-    this.currentUserId = 1;
-    this.currentActivityId = 1;
     this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000, // One day in ms
+      checkPeriod: 86400000,
     });
   }
 
-  // User methods
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    return db.prepare('SELECT * FROM users WHERE username = ?').get(username);
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.email === email,
-    );
+    return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = { ...insertUser, id, role: "publicador" };
-    this.users.set(id, user);
-    return user;
+    const result = db.prepare(
+      'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?) RETURNING *'
+    ).get(insertUser.username, insertUser.email, insertUser.password, 'publicador');
+    return result;
   }
 
   async updateUser(id: number, updates: UpdateUser): Promise<User | undefined> {
-    const user = await this.getUser(id);
-    if (!user) return undefined;
-    
-    const updatedUser = { ...user, ...updates };
-    this.users.set(id, updatedUser);
-    return updatedUser;
+    return db.prepare(
+      'UPDATE users SET role = ? WHERE id = ? RETURNING *'
+    ).get(updates.role, id);
   }
 
-  // Activity methods
   async createActivity(userId: number, insertActivity: InsertActivity): Promise<Activity> {
-    const id = this.currentActivityId++;
-    const activity: Activity = { ...insertActivity, id, userId };
-    this.activities.set(id, activity);
-    return activity;
+    const result = db.prepare(
+      'INSERT INTO activities (userId, type, hours, date, notes) VALUES (?, ?, ?, ?, ?) RETURNING *'
+    ).get(userId, insertActivity.type, insertActivity.hours, insertActivity.date.toISOString(), insertActivity.notes);
+    return result;
   }
 
   async getActivities(userId: number): Promise<Activity[]> {
-    return Array.from(this.activities.values())
-      .filter(activity => activity.userId === userId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return db.prepare('SELECT * FROM activities WHERE userId = ? ORDER BY date DESC').all(userId);
   }
 
   async getActivitiesByMonth(userId: number, year: number, month: number): Promise<Activity[]> {
-    return (await this.getActivities(userId)).filter(activity => {
-      const activityDate = new Date(activity.date);
-      return activityDate.getFullYear() === year && activityDate.getMonth() === month;
-    });
+    const startDate = new Date(year, month, 1).toISOString();
+    const endDate = new Date(year, month + 1, 0).toISOString();
+    return db.prepare(
+      'SELECT * FROM activities WHERE userId = ? AND date >= ? AND date < ? ORDER BY date DESC'
+    ).all(userId, startDate, endDate);
   }
 
   async getActivity(id: number): Promise<Activity | undefined> {
-    return this.activities.get(id);
+    return db.prepare('SELECT * FROM activities WHERE id = ?').get(id);
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new SqliteStorage();

@@ -133,8 +133,11 @@ export function ActivityCalendar({
 }: ActivityCalendarProps) {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
+  // Ensure date is a valid Date object
+  const currentDate = date instanceof Date ? date : new Date(date);
+  
   // Create calendar for month
-  const month = startOfMonth(date);
+  const month = startOfMonth(currentDate);
   const monthEnd = endOfMonth(month);
   const days = eachDayOfInterval({ start: month, end: monthEnd });
 

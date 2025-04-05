@@ -33,11 +33,6 @@ export default function HomePage() {
     setActivityToEdit(null);
   };
 
-  const handleActivityEdit = (activity: Activity) => {
-    setActivityToEdit(activity);
-    setIsFormOpen(true);
-  };
-
   // Fetch activities for the current month
   const { data: activities = [] } = useQuery<Activity[]>({
     queryKey: ["/api/activities/month", year, month],

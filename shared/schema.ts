@@ -72,7 +72,11 @@ export const insertActivitySchema = createInsertSchema(activities)
       ActivityType.ESTUDO
     ], {
       errorMap: () => ({ message: "Tipo de atividade inválido" })
-    })
+    }),
+    hours: z.coerce.number()
+      .min(0.5, "Mínimo de 0.5 horas")
+      .max(24, "Máximo de 24 horas")
+      .step(0.5, "Incrementos de 0.5 horas apenas")
   });
 
 // Type exports

@@ -85,38 +85,56 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
+      console.log("Recebido pedido de registro:", JSON.stringify(req.body, null, 2));
+      
       // Validate input
       const userData = insertUserSchema.parse(req.body);
+      console.log("Dados validados:", JSON.stringify(userData, null, 2));
       
       // Check if username exists
       const existingUsername = await storage.getUserByUsername(userData.username);
       if (existingUsername) {
+        console.log("Nome de usuário já existe:", userData.username);
         return res.status(400).json({ message: "Nome de usuário já existe" });
       }
       
       // Check if email exists
       const existingEmail = await storage.getUserByEmail(userData.email);
       if (existingEmail) {
+        console.log("Email já está em uso:", userData.email);
         return res.status(400).json({ message: "Email já está em uso" });
       }
 
+      console.log("Tentando criar usuário no storage");
+      
       // Create new user with hashed password
+      const hashedPassword = await hashPassword(userData.password);
+      console.log("Senha com hash gerada");
+      
       const user = await storage.createUser({
         ...userData,
-        password: await hashPassword(userData.password),
+        password: hashedPassword,
       });
+      
+      console.log("Usuário criado com sucesso:", user.id);
 
       // Remove password from response
       const { password, ...userWithoutPassword } = user;
 
       // Login the user after registration
       req.login(user, (err) => {
-        if (err) return next(err);
+        if (err) {
+          console.error("Erro ao fazer login após registro:", err);
+          return next(err);
+        }
+        console.log("Login realizado após registro");
         return res.status(201).json(userWithoutPassword);
       });
     } catch (error) {
+      console.error("Erro no registro:", error);
       if (error instanceof ZodError) {
         const validationError = fromZodError(error);
+        console.log("Erro de validação:", validationError.message);
         return res.status(400).json({ message: validationError.message });
       }
       next(error);

@@ -47,14 +47,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values({
-        ...insertUser,
-        role: 'publicador' // Default role
-      })
-      .returning();
-    return user;
+    console.log("Tentando criar usuário no banco de dados:", JSON.stringify({
+      ...insertUser,
+      password: "***REDACTED***" // Não logar a senha no console
+    }, null, 2));
+    
+    try {
+      const [user] = await db
+        .insert(users)
+        .values({
+          ...insertUser,
+          role: 'publicador' // Default role
+        })
+        .returning();
+      
+      console.log("Usuário criado com sucesso no banco:", user.id);
+      return user;
+    } catch (error) {
+      console.error("Erro ao criar usuário no banco:", error);
+      throw error;
+    }
   }
 
   async updateUser(id: number, updates: UpdateUser): Promise<User | undefined> {
@@ -71,7 +83,7 @@ export class DatabaseStorage implements IStorage {
       .insert(activities)
       .values({
         ...insertActivity,
-        userId
+        user_id: userId // Usando o nome real da coluna 'user_id' em vez de 'userId'
       })
       .returning();
     return activity;

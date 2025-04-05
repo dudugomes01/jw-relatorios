@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, boolean, timestamp, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, decimal, foreignKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 // User roles
 export const UserRole = {
@@ -35,12 +36,24 @@ export const users = pgTable("users", {
 // Activities table
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   type: text("type").notNull(),
   hours: decimal("hours", { precision: 4, scale: 1 }).notNull(),
   date: timestamp("date").notNull(),
   notes: text("notes"),
 });
+
+// Define relations
+export const usersRelations = relations(users, ({ many }) => ({
+  activities: many(activities)
+}));
+
+export const activitiesRelations = relations(activities, ({ one }) => ({
+  user: one(users, {
+    fields: [activities.userId],
+    references: [users.id]
+  })
+}));
 
 // Schemas for validation
 export const insertUserSchema = createInsertSchema(users).pick({

@@ -108,10 +108,10 @@ export function ActivityForm({ onSave, initialDate = new Date() }: ActivityFormP
 
   // Form submission handler
   const onSubmit = (values: FormValues) => {
-    // Garantir que a data seja um objeto Date válido
     const formData = {
       ...values,
-      date: new Date(values.date),
+      hours: Number(values.hours),
+      date: new Date(values.date)
     };
     saveMutation.mutate(formData);
   };

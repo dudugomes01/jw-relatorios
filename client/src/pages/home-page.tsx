@@ -18,9 +18,20 @@ export default function HomePage() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [activityToEdit, setActivityToEdit] = useState<Activity | null>(null);
   const { year, month } = getCurrentMonthYear(selectedDate);
+
+  const handleActivityEdit = (activity: Activity) => {
+    setActivityToEdit(activity);
+    setSelectedDate(new Date(activity.date));
+    setIsFormOpen(true);
+  };
+
+  const handleActivitySaved = () => {
+    setIsFormOpen(false);
+    setActivityToEdit(null);
+  };
 
   const handleActivityEdit = (activity: Activity) => {
     setActivityToEdit(activity);

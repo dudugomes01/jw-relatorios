@@ -41,7 +41,16 @@ interface ActivityCalendarProps {
 }
 
 // Modal Component
-function DayActivitiesDialog({ isOpen, onClose, activities, date, onActivityDeleted, onActivityEdit }: any) {
+interface DayActivitiesDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  activities: Activity[];
+  date: Date;
+  onActivityDeleted: (id: number) => void;
+  onActivityEdit?: (activity: Activity) => void;
+}
+
+function DayActivitiesDialog({ isOpen, onClose, activities, date, onActivityDeleted, onActivityEdit }: DayActivitiesDialogProps) {
   if (!isOpen) return null;
 
   const handleDelete = async (activityId: number) => {
@@ -107,14 +116,22 @@ function DayActivitiesDialog({ isOpen, onClose, activities, date, onActivityDele
 }
 
 
+interface ActivityCalendarProps {
+  activities: Activity[];
+  date: Date;
+  onDateChange: (date: Date) => void;
+  onDayClick?: (date: Date) => void;
+  onActivityEdit?: (activity: Activity) => void;
+}
+
 export function ActivityCalendar({ 
   activities,
   date,
   onDateChange,
-  onDayClick
+  onDayClick,
+  onActivityEdit
 }: ActivityCalendarProps) {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-  const [activityToEdit, setActivityToEdit] = useState<Activity | null>(null);
 
   // Create calendar for month
   const month = startOfMonth(date);

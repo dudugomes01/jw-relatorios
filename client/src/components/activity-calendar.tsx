@@ -169,7 +169,9 @@ export function ActivityCalendar({
   };
 
   const handleActivityEdit = (activity: Activity) => {
-    setActivityToEdit(activity);
+    if (onActivityEdit) {
+      onActivityEdit(activity);
+    }
     if (onDayClick) {
       onDayClick(new Date(activity.date));
     }

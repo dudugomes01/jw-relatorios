@@ -78,7 +78,7 @@ export class SqliteStorage implements IStorage {
   async createActivity(userId: number, insertActivity: InsertActivity): Promise<Activity> {
     const result = db.prepare(
       'INSERT INTO activities (userId, type, hours, date, notes) VALUES (?, ?, ?, ?, ?) RETURNING *'
-    ).get(userId, insertActivity.type, insertActivity.hours, insertActivity.date.toISOString(), insertActivity.notes);
+    ).get(userId, insertActivity.type, insertActivity.hours, new Date(insertActivity.date).toISOString(), insertActivity.notes);
     return result;
   }
 

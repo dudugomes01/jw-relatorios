@@ -66,10 +66,6 @@ export default function HomePage() {
     setIsFormOpen(false);
   };
 
-  const handleActivitySaved = () => {
-    closeActivityForm();
-  };
-
   if (!user) {
     navigate("/auth");
     return null;

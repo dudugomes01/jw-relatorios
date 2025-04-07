@@ -23,6 +23,19 @@ export function NavigationBar() {
             )}
           >
             <CalendarDays className="mr-2 h-4 w-4" />
+            Atividades
+          </Link>
+
+          <Link
+            href="/reports"
+            className={cn(
+              "px-3 py-2 rounded-md text-sm font-medium flex items-center",
+              isActive("/reports")
+                ? "bg-primary text-white"
+                : "text-gray-600 hover:bg-gray-100"
+            )}
+          >
+            <CalendarDays className="mr-2 h-4 w-4" />
             Relatórios
           </Link>
 

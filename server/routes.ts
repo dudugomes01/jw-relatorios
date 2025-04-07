@@ -48,13 +48,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get activities for service year
   router.get('/activities/year/:year/:month', async (req, res) => {
-    const { year, month } = req.params;
-    const startDate = new Date(Number(year), Number(month), 1);
-    const endDate = new Date(Number(year) + 1, Number(month), 0);
+    const year = parseInt(req.params.year);
+    const month = parseInt(req.params.month);
 
-    const activities = await storage.getActivitiesByYearMonth(DEMO_USER_ID, year, month); // Assuming storage has this function
+    if (isNaN(year) || isNaN(month) || month < 0 || month > 11) {
+      return res.status(400).json({ message: "Ano ou mês inválido" });
+    }
 
-    res.json(activities);
+    try {
+      const activities = await storage.getActivitiesByYearMonth(DEMO_USER_ID, year, month);
+      res.json(activities);
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+      res.status(500).json({ message: "Erro ao buscar atividades" });
+    }
   });
 
 

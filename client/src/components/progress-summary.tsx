@@ -32,28 +32,33 @@ export function ProgressSummary({ activities, userRole }: ProgressSummaryProps) 
   const totalMonthHours = calculateTotalHours(activities);
   
   // Calculate total hours for the service year (September to September)
-  const calculateServiceYearHours = (activities: Activity[]) => {
+  const calculateServiceYearHours = async () => {
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth();
     
-    // Determine the service year start
+    // Determine service year start
     const serviceYearStart = new Date(
       currentMonth < 8 ? currentYear - 1 : currentYear, 
       8, // September (0-based)
       1
     );
+
+    // Fetch all activities for the service year
+    const response = await fetch(`/api/activities/year/${serviceYearStart.getFullYear()}/${serviceYearStart.getMonth()}`);
+    if (!response.ok) return 0;
     
-    return activities.reduce((total, activity) => {
-      const activityDate = new Date(activity.date);
-      if (activityDate >= serviceYearStart) {
-        return total + Number(activity.hours);
-      }
-      return total;
+    const yearActivities = await response.json();
+    return yearActivities.reduce((total: number, activity: Activity) => {
+      return total + Number(activity.hours);
     }, 0);
   };
 
-  const totalYearHours = calculateServiceYearHours(activities); // Você precisará ajustar isso para filtrar por ano
+  const [totalYearHours, setTotalYearHours] = useState(0);
+  
+  useEffect(() => {
+    calculateServiceYearHours().then(setTotalYearHours);
+  }, []); // Você precisará ajustar isso para filtrar por ano
   
   // Calculate progress percentages
   const monthProgressPercentage = monthlyGoal ? Math.min((totalMonthHours / monthlyGoal) * 100, 100) : 0;

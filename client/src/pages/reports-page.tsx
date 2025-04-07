@@ -41,6 +41,7 @@ export default function ReportsPage() {
       
       <main className="flex-1 overflow-y-auto bg-gray-50">
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 space-y-6">
+          <h2 className="text-2xl font-bold leading-7 text-gray-900 mb-4">Resumo de Atividades</h2>
           <Tabs defaultValue="current">
             <TabsList>
               <TabsTrigger value="current">Mês Atual</TabsTrigger>

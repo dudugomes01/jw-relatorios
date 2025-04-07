@@ -42,6 +42,24 @@ async function ensureDemoUser() {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Certifica-se que o usuário demo existe
   const demoUser = await ensureDemoUser();
+
+// Get activities for service year
+router.get('/activities/year/:year/:month', async (req, res) => {
+  const { year, month } = req.params;
+  const startDate = new Date(Number(year), Number(month), 1);
+  const endDate = new Date(Number(year) + 1, Number(month), 0);
+  
+  const activities = await db.query.activities.findMany({
+    where: (activities, { and, gte, lte }) => 
+      and(
+        gte(activities.date, startDate.toISOString()),
+        lte(activities.date, endDate.toISOString())
+      )
+  });
+  
+  res.json(activities);
+});
+
   
   // Retorna o usuário demo (sem autenticação)
   app.get("/api/user", async (req, res) => {

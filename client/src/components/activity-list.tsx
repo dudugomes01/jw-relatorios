@@ -34,9 +34,9 @@ interface ActivityListProps {
 
 export function ActivityList({ activities }: ActivityListProps) {
   // Sort activities by date (most recent first)
-  const sortedActivities = [...activities].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  const sortedActivities = [...activities]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 6);
 
   return (
     <Card>

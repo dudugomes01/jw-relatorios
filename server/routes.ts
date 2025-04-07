@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { UserRole, updateUserSchema, insertActivitySchema, insertReminderSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import { Router } from 'express'; // Import express.Router
 
 // ID de usuário de demonstração, usado para todas as operações
 const DEMO_USER_ID = 1;
@@ -11,7 +12,7 @@ const DEMO_USER_ID = 1;
 // Garantir que o usuário demo existe
 async function ensureDemoUser() {
   let demoUser = await storage.getUser(DEMO_USER_ID);
-  
+
   if (!demoUser) {
     console.log("Criando usuário de demonstração...");
     try {
@@ -22,20 +23,20 @@ async function ensureDemoUser() {
         firstName: "João",
         lastName: "Silva"
       });
-      
+
       // Atualizar o papel após criar
       if (demoUser) {
         demoUser = await storage.updateUser(demoUser.id, {
           role: UserRole.PIONEIRO_REGULAR
         });
       }
-      
+
       console.log("Usuário de demonstração criado:", demoUser?.id);
     } catch (error) {
       console.error("Erro ao criar usuário demo:", error);
     }
   }
-  
+
   return demoUser;
 }
 
@@ -43,31 +44,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Certifica-se que o usuário demo existe
   const demoUser = await ensureDemoUser();
 
-// Get activities for service year
-router.get('/activities/year/:year/:month', async (req, res) => {
-  const { year, month } = req.params;
-  const startDate = new Date(Number(year), Number(month), 1);
-  const endDate = new Date(Number(year) + 1, Number(month), 0);
-  
-  const activities = await db.query.activities.findMany({
-    where: (activities, { and, gte, lte }) => 
-      and(
-        gte(activities.date, startDate.toISOString()),
-        lte(activities.date, endDate.toISOString())
-      )
-  });
-  
-  res.json(activities);
-});
+  const router = Router(); // Initialize the router
 
-  
+  // Get activities for service year
+  router.get('/activities/year/:year/:month', async (req, res) => {
+    const { year, month } = req.params;
+    const startDate = new Date(Number(year), Number(month), 1);
+    const endDate = new Date(Number(year) + 1, Number(month), 0);
+
+    const activities = await storage.getActivitiesByYearMonth(DEMO_USER_ID, year, month); // Assuming storage has this function
+
+    res.json(activities);
+  });
+
+
+  app.use('/api', router); // Use the router for /api routes
+
   // Retorna o usuário demo (sem autenticação)
   app.get("/api/user", async (req, res) => {
     const user = await storage.getUser(DEMO_USER_ID);
     if (!user) {
       return res.status(404).json({ message: "Usuário não encontrado" });
     }
-    
+
     // Remove senha do retorno
     const { password, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
@@ -77,12 +76,12 @@ router.get('/activities/year/:year/:month', async (req, res) => {
   app.put("/api/user", async (req, res, next) => {
     try {
       const userData = updateUserSchema.parse(req.body);
-      
+
       const updatedUser = await storage.updateUser(DEMO_USER_ID, userData);
       if (!updatedUser) {
         return res.status(404).json({ message: "Usuário não encontrado" });
       }
-      
+
       // Remove password from response
       const { password, ...userWithoutPassword } = updatedUser;
       res.json(userWithoutPassword);
@@ -99,7 +98,7 @@ router.get('/activities/year/:year/:month', async (req, res) => {
   app.post("/api/activities", async (req, res, next) => {
     try {
       const activityData = insertActivitySchema.parse(req.body);
-      
+
       const newActivity = await storage.createActivity(DEMO_USER_ID, activityData);
       res.status(201).json(newActivity);
     } catch (error) {
@@ -119,11 +118,11 @@ router.get('/activities/year/:year/:month', async (req, res) => {
   app.get("/api/activities/month/:year/:month", async (req, res) => {
     const year = parseInt(req.params.year);
     const month = parseInt(req.params.month);
-    
+
     if (isNaN(year) || isNaN(month) || month < 0 || month > 11) {
       return res.status(400).json({ message: "Ano ou mês inválido" });
     }
-    
+
     const activities = await storage.getActivitiesByMonth(DEMO_USER_ID, year, month);
     res.json(activities);
   });
@@ -133,17 +132,17 @@ router.get('/activities/year/:year/:month', async (req, res) => {
     if (isNaN(activityId)) {
       return res.status(400).json({ message: "ID de atividade inválido" });
     }
-    
+
     const activity = await storage.getActivity(activityId);
     if (!activity) {
       return res.status(404).json({ message: "Atividade não encontrada" });
     }
-    
+
     // Ainda checamos se a atividade pertence ao usuário demo
     if (activity.userId !== DEMO_USER_ID) {
       return res.status(403).json({ message: "Acesso não autorizado" });
     }
-    
+
     res.json(activity);
   });
 
@@ -153,18 +152,18 @@ router.get('/activities/year/:year/:month', async (req, res) => {
       if (isNaN(activityId)) {
         return res.status(400).json({ message: "ID de atividade inválido" });
       }
-      
+
       const activity = await storage.getActivity(activityId);
       if (!activity) {
         return res.status(404).json({ message: "Atividade não encontrada" });
       }
-      
+
       if (activity.userId !== DEMO_USER_ID) {
         return res.status(403).json({ message: "Acesso não autorizado" });
       }
-      
+
       const activityData = insertActivitySchema.parse(req.body);
-      
+
       const updatedActivity = await storage.updateActivity(activityId, activityData);
       res.json(updatedActivity);
     } catch (error) {
@@ -181,16 +180,16 @@ router.get('/activities/year/:year/:month', async (req, res) => {
     if (isNaN(activityId)) {
       return res.status(400).json({ message: "ID de atividade inválido" });
     }
-    
+
     const activity = await storage.getActivity(activityId);
     if (!activity) {
       return res.status(404).json({ message: "Atividade não encontrada" });
     }
-    
+
     if (activity.userId !== DEMO_USER_ID) {
       return res.status(403).json({ message: "Acesso não autorizado" });
     }
-    
+
     await storage.deleteActivity(activityId);
     res.sendStatus(200);
   });
@@ -199,7 +198,7 @@ router.get('/activities/year/:year/:month', async (req, res) => {
   app.post("/api/reminders", async (req, res, next) => {
     try {
       const reminderData = insertReminderSchema.parse(req.body);
-      
+
       const newReminder = await storage.createReminder(DEMO_USER_ID, reminderData);
       res.status(201).json(newReminder);
     } catch (error) {
@@ -219,11 +218,11 @@ router.get('/activities/year/:year/:month', async (req, res) => {
   app.get("/api/reminders/month/:year/:month", async (req, res) => {
     const year = parseInt(req.params.year);
     const month = parseInt(req.params.month);
-    
+
     if (isNaN(year) || isNaN(month) || month < 0 || month > 11) {
       return res.status(400).json({ message: "Ano ou mês inválido" });
     }
-    
+
     const reminders = await storage.getRemindersByMonth(DEMO_USER_ID, year, month);
     res.json(reminders);
   });
@@ -233,16 +232,16 @@ router.get('/activities/year/:year/:month', async (req, res) => {
     if (isNaN(reminderId)) {
       return res.status(400).json({ message: "ID de lembrete inválido" });
     }
-    
+
     const reminder = await storage.getReminder(reminderId);
     if (!reminder) {
       return res.status(404).json({ message: "Lembrete não encontrado" });
     }
-    
+
     if (reminder.userId !== DEMO_USER_ID) {
       return res.status(403).json({ message: "Acesso não autorizado" });
     }
-    
+
     res.json(reminder);
   });
 
@@ -252,18 +251,18 @@ router.get('/activities/year/:year/:month', async (req, res) => {
       if (isNaN(reminderId)) {
         return res.status(400).json({ message: "ID de lembrete inválido" });
       }
-      
+
       const reminder = await storage.getReminder(reminderId);
       if (!reminder) {
         return res.status(404).json({ message: "Lembrete não encontrado" });
       }
-      
+
       if (reminder.userId !== DEMO_USER_ID) {
         return res.status(403).json({ message: "Acesso não autorizado" });
       }
-      
+
       const reminderData = insertReminderSchema.parse(req.body);
-      
+
       const updatedReminder = await storage.updateReminder(reminderId, reminderData);
       res.json(updatedReminder);
     } catch (error) {
@@ -280,16 +279,16 @@ router.get('/activities/year/:year/:month', async (req, res) => {
     if (isNaN(reminderId)) {
       return res.status(400).json({ message: "ID de lembrete inválido" });
     }
-    
+
     const reminder = await storage.getReminder(reminderId);
     if (!reminder) {
       return res.status(404).json({ message: "Lembrete não encontrado" });
     }
-    
+
     if (reminder.userId !== DEMO_USER_ID) {
       return res.status(403).json({ message: "Acesso não autorizado" });
     }
-    
+
     await storage.deleteReminder(reminderId);
     res.sendStatus(200);
   });

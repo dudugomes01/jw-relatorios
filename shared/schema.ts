@@ -38,7 +38,7 @@ export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   type: text("type").notNull(),
-  hours: decimal("hours", { precision: 4, scale: 1 }).notNull(),
+  hours: text("hours").notNull(),
   date: timestamp("date").notNull(),
   notes: text("notes"),
 });

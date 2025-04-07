@@ -1,26 +1,66 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth } from "./auth";
-import { updateUserSchema, insertActivitySchema } from "@shared/schema";
+import { UserRole, updateUserSchema, insertActivitySchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup authentication routes
-  setupAuth(app);
+// ID de usuário de demonstração, usado para todas as operações
+const DEMO_USER_ID = 1;
 
-  // User profile routes
-  app.put("/api/user", async (req, res, next) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
+// Garantir que o usuário demo existe
+async function ensureDemoUser() {
+  let demoUser = await storage.getUser(DEMO_USER_ID);
+  
+  if (!demoUser) {
+    console.log("Criando usuário de demonstração...");
+    try {
+      demoUser = await storage.createUser({
+        username: "demo",
+        password: "password", // Não será usado, apenas para o schema
+        email: "demo@example.com",
+        firstName: "João",
+        lastName: "Silva"
+      });
+      
+      // Atualizar o papel após criar
+      if (demoUser) {
+        demoUser = await storage.updateUser(demoUser.id, {
+          role: UserRole.PIONEIRO_REGULAR
+        });
+      }
+      
+      console.log("Usuário de demonstração criado:", demoUser?.id);
+    } catch (error) {
+      console.error("Erro ao criar usuário demo:", error);
+    }
+  }
+  
+  return demoUser;
+}
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Certifica-se que o usuário demo existe
+  const demoUser = await ensureDemoUser();
+  
+  // Retorna o usuário demo (sem autenticação)
+  app.get("/api/user", async (req, res) => {
+    const user = await storage.getUser(DEMO_USER_ID);
+    if (!user) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
     }
     
+    // Remove senha do retorno
+    const { password, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  });
+
+  // User profile routes (usando usuário demo)
+  app.put("/api/user", async (req, res, next) => {
     try {
-      const userId = req.user.id;
       const userData = updateUserSchema.parse(req.body);
       
-      const updatedUser = await storage.updateUser(userId, userData);
+      const updatedUser = await storage.updateUser(DEMO_USER_ID, userData);
       if (!updatedUser) {
         return res.status(404).json({ message: "Usuário não encontrado" });
       }
@@ -37,17 +77,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Activity routes
+  // Activity routes (usando usuário demo)
   app.post("/api/activities", async (req, res, next) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-    
     try {
-      const userId = req.user.id;
       const activityData = insertActivitySchema.parse(req.body);
       
-      const newActivity = await storage.createActivity(userId, activityData);
+      const newActivity = await storage.createActivity(DEMO_USER_ID, activityData);
       res.status(201).json(newActivity);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -59,21 +94,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/activities", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-    
-    const userId = req.user.id;
-    const activities = await storage.getActivities(userId);
+    const activities = await storage.getActivities(DEMO_USER_ID);
     res.json(activities);
   });
 
   app.get("/api/activities/month/:year/:month", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-    
-    const userId = req.user.id;
     const year = parseInt(req.params.year);
     const month = parseInt(req.params.month);
     
@@ -81,15 +106,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ message: "Ano ou mês inválido" });
     }
     
-    const activities = await storage.getActivitiesByMonth(userId, year, month);
+    const activities = await storage.getActivitiesByMonth(DEMO_USER_ID, year, month);
     res.json(activities);
   });
 
   app.get("/api/activities/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-    
     const activityId = parseInt(req.params.id);
     if (isNaN(activityId)) {
       return res.status(400).json({ message: "ID de atividade inválido" });
@@ -100,19 +121,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "Atividade não encontrada" });
     }
     
-    // Check if activity belongs to user
-    if (activity.userId !== req.user.id) {
+    // Ainda checamos se a atividade pertence ao usuário demo
+    if (activity.userId !== DEMO_USER_ID) {
       return res.status(403).json({ message: "Acesso não autorizado" });
     }
     
     res.json(activity);
   });
 
-  app.delete("/api/activities/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
+  app.put("/api/activities/:id", async (req, res, next) => {
+    try {
+      const activityId = parseInt(req.params.id);
+      if (isNaN(activityId)) {
+        return res.status(400).json({ message: "ID de atividade inválido" });
+      }
+      
+      const activity = await storage.getActivity(activityId);
+      if (!activity) {
+        return res.status(404).json({ message: "Atividade não encontrada" });
+      }
+      
+      if (activity.userId !== DEMO_USER_ID) {
+        return res.status(403).json({ message: "Acesso não autorizado" });
+      }
+      
+      const activityData = insertActivitySchema.parse(req.body);
+      
+      const updatedActivity = await storage.updateActivity(activityId, activityData);
+      res.json(updatedActivity);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      next(error);
     }
-    
+  });
+
+  app.delete("/api/activities/:id", async (req, res) => {
     const activityId = parseInt(req.params.id);
     if (isNaN(activityId)) {
       return res.status(400).json({ message: "ID de atividade inválido" });
@@ -123,7 +169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "Atividade não encontrada" });
     }
     
-    if (activity.userId !== req.user.id) {
+    if (activity.userId !== DEMO_USER_ID) {
       return res.status(403).json({ message: "Acesso não autorizado" });
     }
     

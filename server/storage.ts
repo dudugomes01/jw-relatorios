@@ -14,6 +14,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: UpdateUser): Promise<User | undefined>;
   createActivity(userId: number, activity: InsertActivity): Promise<Activity>;
+  updateActivity(id: number, activity: InsertActivity): Promise<Activity | undefined>;
   getActivities(userId: number): Promise<Activity[]>;
   getActivitiesByMonth(userId: number, year: number, month: number): Promise<Activity[]>;
   getActivity(id: number): Promise<Activity | undefined>;
@@ -82,8 +83,11 @@ export class DatabaseStorage implements IStorage {
     const [activity] = await db
       .insert(activities)
       .values({
-        ...insertActivity,
-        user_id: userId // Usando o nome real da coluna 'user_id' em vez de 'userId'
+        type: insertActivity.type,
+        hours: String(insertActivity.hours), // Convertendo para string
+        date: insertActivity.date,
+        notes: insertActivity.notes,
+        user_id: userId // Usando o nome da coluna no banco de dados
       })
       .returning();
     return activity;
@@ -119,6 +123,20 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(activities)
       .where(eq(activities.id, id));
+    return activity;
+  }
+
+  async updateActivity(id: number, updateData: InsertActivity): Promise<Activity | undefined> {
+    const [activity] = await db
+      .update(activities)
+      .set({
+        type: updateData.type,
+        hours: String(updateData.hours), // Convertendo para string
+        date: updateData.date,
+        notes: updateData.notes
+      })
+      .where(eq(activities.id, id))
+      .returning();
     return activity;
   }
 

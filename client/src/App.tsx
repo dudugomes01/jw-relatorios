@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import SettingsPage from "@/pages/settings-page";
 import RemindersPage from "@/pages/reminders-page";
+import ReportsPage from "@/pages/reports-page";
 
 function Router() {
   return (

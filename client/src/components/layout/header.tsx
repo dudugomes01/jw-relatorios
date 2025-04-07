@@ -1,6 +1,4 @@
-import { useState } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -9,26 +7,19 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Loader2 } from "lucide-react";
+import { Settings, Home } from "lucide-react";
 
 export function Header() {
-  const { user, logoutMutation } = useAuth();
   const [, navigate] = useLocation();
-  
-  // Get user initials for avatar
-  const getUserInitials = () => {
-    if (!user) return "?";
-    return user.username.substring(0, 2).toUpperCase();
-  };
   
   // Handle navigation to profile
   const navigateToProfile = () => {
     navigate("/settings");
   };
   
-  // Handle logout
-  const handleLogout = () => {
-    logoutMutation.mutate();
+  // Handle navigation to home
+  const navigateToHome = () => {
+    navigate("/");
   };
 
   return (
@@ -37,7 +28,7 @@ export function Header() {
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <h1 className="text-xl font-bold text-primary cursor-pointer" onClick={() => navigate("/")}>
+              <h1 className="text-xl font-bold text-primary cursor-pointer" onClick={navigateToHome}>
                 Relatório de Atividades
               </h1>
             </div>
@@ -50,27 +41,19 @@ export function Header() {
                     <span className="sr-only">Abrir menu do usuário</span>
                     <Avatar>
                       <AvatarFallback className="bg-gray-500 text-white">
-                        {getUserInitials()}
+                        JD
                       </AvatarFallback>
                     </Avatar>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-48" align="end">
-                  <DropdownMenuItem onClick={navigateToProfile}>
-                    Seu perfil
+                  <DropdownMenuItem onClick={navigateToHome}>
+                    <Home className="mr-2 h-4 w-4" />
+                    Página inicial
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={navigateToProfile}>
+                    <Settings className="mr-2 h-4 w-4" />
                     Configurações
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={handleLogout}
-                    disabled={logoutMutation.isPending}
-                  >
-                    {logoutMutation.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    Sair
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { ActivityType, InsertActivity, insertActivitySchema } from "@shared/schema";
+import { ActivityType, InsertActivity, insertActivitySchema, Activity } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -66,9 +66,10 @@ export function ActivityForm({ onSave, initialDate, activityToEdit }: ActivityFo
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: activityToEdit ? {
-      type: activityToEdit.type,
+      // Garantindo que o tipo está entre os valores permitidos
+      type: isValidActivityType(activityToEdit.type) ? activityToEdit.type : ActivityType.CAMPO,
       date: new Date(activityToEdit.date),
-      hours: activityToEdit.hours,
+      hours: Number(activityToEdit.hours),
       notes: activityToEdit.notes || ""
     } : {
       type: ActivityType.CAMPO,
@@ -77,6 +78,11 @@ export function ActivityForm({ onSave, initialDate, activityToEdit }: ActivityFo
       notes: ""
     }
   });
+  
+  // Helper to check if the activity type is valid
+  function isValidActivityType(type: string): type is typeof ActivityType[keyof typeof ActivityType] {
+    return Object.values(ActivityType).includes(type as any);
+  }
   
   // Update form when initialDate changes
   useEffect(() => {

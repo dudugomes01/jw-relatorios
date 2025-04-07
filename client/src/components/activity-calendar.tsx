@@ -37,13 +37,15 @@ interface ActivityCalendarProps {
   date: Date;
   onDateChange: (date: Date) => void;
   onDayClick?: (date: Date) => void;
+  onActivityEdit?: (activity: Activity) => void;
 }
 
 export function ActivityCalendar({ 
   activities,
   date,
   onDateChange,
-  onDayClick
+  onDayClick,
+  onActivityEdit
 }: ActivityCalendarProps) {
   // Ensure date is a valid Date object
   const currentDate = date instanceof Date ? date : new Date(date);
@@ -147,9 +149,15 @@ export function ActivityCalendar({
                     <div 
                       key={`${activity.id}-${index}`}
                       className={cn(
-                        "text-xs rounded px-1 py-0.5 mb-1 truncate",
+                        "text-xs rounded px-1 py-0.5 mb-1 truncate cursor-pointer",
                         ActivityColors[activity.type as keyof typeof ActivityColors]
                       )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onActivityEdit) {
+                          onActivityEdit(activity);
+                        }
+                      }}
                     >
                       {ActivityLabels[activity.type as keyof typeof ActivityLabels]}: {activity.hours}h
                     </div>

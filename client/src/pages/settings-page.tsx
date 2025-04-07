@@ -3,8 +3,7 @@ import { useLocation } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAuth } from "@/hooks/use-auth";
-import { UserRole, UpdateUser } from "@shared/schema";
+import { UserRole } from "@shared/schema";
 import { 
   Form,
   FormControl,
@@ -27,12 +26,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Header } from "@/components/layout/header";
 import { NavigationTabs } from "@/components/layout/navigation-tabs";
 import { Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 // Form schema for user settings
 const formSchema = z.object({
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  email: z.string().email().optional(),
+  firstName: z.string().min(1, "Nome é obrigatório"),
+  lastName: z.string().min(1, "Sobrenome é obrigatório"),
+  email: z.string().email("Email inválido"),
   role: z.enum([
     UserRole.PUBLICADOR, 
     UserRole.PIONEIRO_AUXILIAR, 
@@ -44,33 +44,41 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function SettingsPage() {
   const [, navigate] = useLocation();
-  const { user, updateUserMutation } = useAuth();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Form setup with user data
+  // Usuário de demonstração
+  const demoUser = {
+    firstName: "João",
+    lastName: "Silva",
+    email: "usuario@exemplo.com",
+    role: UserRole.PIONEIRO_REGULAR
+  };
+  
+  // Form setup with demo data
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: user?.email || "",
-      role: user?.role as UserRole.PUBLICADOR || UserRole.PUBLICADOR
+      firstName: demoUser.firstName,
+      lastName: demoUser.lastName,
+      email: demoUser.email,
+      role: demoUser.role
     }
   });
 
-  // Handle form submission
+  // Handle form submission (simulado)
   const onSubmit = (values: FormValues) => {
-    // Only send role to the API
-    const updateData: UpdateUser = {
-      role: values.role
-    };
+    setIsSubmitting(true);
     
-    updateUserMutation.mutate(updateData);
+    // Simulando um envio de dados
+    setTimeout(() => {
+      toast({
+        title: "Configurações salvas",
+        description: "Suas preferências foram atualizadas com sucesso."
+      });
+      setIsSubmitting(false);
+    }, 1000);
   };
-
-  if (!user) {
-    navigate("/auth");
-    return null;
-  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -131,7 +139,6 @@ export default function SettingsPage() {
                             type="email"
                             placeholder="seu.email@exemplo.com"
                             {...field}
-                            disabled
                           />
                         </FormControl>
                         <FormMessage />
@@ -179,9 +186,9 @@ export default function SettingsPage() {
                     </Button>
                     <Button 
                       type="submit"
-                      disabled={updateUserMutation.isPending}
+                      disabled={isSubmitting}
                     >
-                      {updateUserMutation.isPending ? (
+                      {isSubmitting ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : null}
                       Salvar

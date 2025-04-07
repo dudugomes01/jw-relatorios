@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
-import { Activity } from "@shared/schema";
-import { useAuth } from "@/hooks/use-auth";
+import { Activity, UserRole } from "@shared/schema";
 import { Header } from "@/components/layout/header";
 import { NavigationTabs } from "@/components/layout/navigation-tabs";
 import { ActivityForm } from "@/components/activity-form";
@@ -15,12 +13,18 @@ import { Plus } from "lucide-react";
 import { getCurrentMonthYear } from "@/lib/utils/date-utils";
 
 export default function HomePage() {
-  const { user } = useAuth();
-  const [, navigate] = useLocation();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [activityToEdit, setActivityToEdit] = useState<Activity | null>(null);
   const { year, month } = getCurrentMonthYear(selectedDate);
+  
+  // Usuário fixo para fins de demonstração
+  const demoUser = {
+    id: 1,
+    username: "usuario",
+    email: "usuario@exemplo.com",
+    role: UserRole.PIONEIRO_REGULAR
+  };
 
   const handleActivityEdit = (activity: Activity) => {
     setActivityToEdit(activity);
@@ -54,22 +58,13 @@ export default function HomePage() {
   });
 
   const handleDateChange = (newDate: Date) => {
-    setSelectedDate(newDate); // Changed to selectedDate
+    setSelectedDate(newDate);
   };
 
   const openActivityForm = (day?: Date) => {
-    setSelectedDate(day || selectedDate); //Set selectedDate to day if provided otherwise keep existing value.
+    setSelectedDate(day || selectedDate);
     setIsFormOpen(true);
   };
-
-  const closeActivityForm = () => {
-    setIsFormOpen(false);
-  };
-
-  if (!user) {
-    navigate("/auth");
-    return null;
-  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -82,12 +77,15 @@ export default function HomePage() {
           {/* Progress Summary */}
           <ProgressSummary 
             activities={activities} 
-            userRole={user.role} 
+            userRole={demoUser.role} 
           />
 
           {/* Add Activity Button */}
           <div className="flex justify-end">
-            <Button onClick={openActivityForm}>
+            <Button onClick={() => {
+              const event = {} as React.MouseEvent<HTMLButtonElement>;
+              openActivityForm(undefined);
+            }}>
               <Plus className="mr-2 h-4 w-4" />
               Registrar atividade
             </Button>
@@ -99,10 +97,7 @@ export default function HomePage() {
             date={selectedDate}
             onDateChange={handleDateChange}
             onDayClick={openActivityForm}
-            onActivityEdit={(activity) => {
-              setActivityToEdit(activity);
-              setIsFormOpen(true);
-            }}
+            onActivityEdit={handleActivityEdit}
           />
 
           {/* Activity List */}
@@ -115,7 +110,7 @@ export default function HomePage() {
                 onSave={handleActivitySaved} 
                 initialDate={selectedDate}
                 activityToEdit={activityToEdit} 
-              /> {/* Changed to selectedDate */}
+              />
             </DialogContent>
           </Dialog>
         </div>

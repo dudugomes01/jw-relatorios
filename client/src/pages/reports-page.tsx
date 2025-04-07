@@ -4,9 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Activity, UserRole } from "@shared/schema";
 import { Header } from "@/components/layout/header";
 import { NavigationBar } from "@/components/layout/navigation-bar";
-import { ProgressSummary } from "@/components/progress-summary";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { calculateHoursByType } from "@/lib/utils/activity-utils";
 
 export default function ReportsPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -27,6 +28,15 @@ export default function ReportsPage() {
   ];
 
   const years = [2023, 2024, 2025];
+
+  // Prepare data for chart
+  const hoursByType = calculateHoursByType(activities);
+  const chartData = Object.entries(hoursByType).map(([type, hours]) => ({
+    type: type === 'campo' ? 'Campo' : 
+          type === 'testemunho' ? 'Testemunho' :
+          type === 'cartas' ? 'Cartas' : 'Estudo',
+    hours
+  }));
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -75,10 +85,44 @@ export default function ReportsPage() {
                 </Select>
               </div>
 
-              <ProgressSummary 
-                activities={activities} 
-                userRole={UserRole.PIONEIRO_REGULAR}
-              />
+              <div className="mt-6">
+                <h3 className="text-lg font-medium mb-4">Horas por Tipo de Atividade</h3>
+                <div className="h-80 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="type" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="hours" fill="#4F46E5" name="Horas" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-lg font-medium mb-4">Detalhes das Atividades</h3>
+                <div className="space-y-4">
+                  {activities.map((activity) => (
+                    <div key={activity.id} className="bg-white p-4 rounded-lg shadow">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">{activity.type === 'campo' ? 'Campo' : 
+                                                     activity.type === 'testemunho' ? 'Testemunho' :
+                                                     activity.type === 'cartas' ? 'Cartas' : 'Estudo'}</p>
+                          <p className="text-sm text-gray-500">
+                            {new Date(activity.date).toLocaleDateString('pt-BR')}
+                          </p>
+                        </div>
+                        <div className="text-lg font-semibold">
+                          {activity.hours}h
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

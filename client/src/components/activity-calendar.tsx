@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { Activity, ActivityType } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Edit2, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit2, Trash2, Plus } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -282,7 +282,20 @@ export function ActivityCalendar({
 
           <div className="py-4">
             {selectedDayActivities.length === 0 ? (
-              <p className="text-center text-gray-500">Nenhuma atividade registrada neste dia.</p>
+              <div className="text-center space-y-4">
+                <p className="text-gray-500">Nenhuma atividade registrada neste dia.</p>
+                <Button
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    if (onDayClick && selectedDay) {
+                      onDayClick(selectedDay);
+                    }
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Registrar Atividade
+                </Button>
+              </div>
             ) : (
               <div className="space-y-4">
                 {selectedDayActivities.map((activity) => (

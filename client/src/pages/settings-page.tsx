@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Header } from "@/components/layout/header";
-import { NavigationTabs } from "@/components/layout/navigation-tabs";
+import { NavigationBar } from "@/components/layout/navigation-bar";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -83,8 +83,7 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      
-      <NavigationTabs activeTab="settings" />
+      <NavigationBar />
       
       <main className="flex-1 overflow-y-auto bg-gray-50">
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 space-y-6">

@@ -15,6 +15,7 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Header } from "@/components/layout/header";
+import { NavigationBar } from "@/components/layout/navigation-bar";
 import { Loader2, PlusCircle, Edit, Trash2 } from "lucide-react";
 import type { Reminder, InsertReminder } from "@shared/schema";
 
@@ -118,13 +119,13 @@ export default function RemindersPage() {
     },
   });
 
-  // Filtered reminders by month
+  // Filtered reminders: all events in the future or all events for current month
   const filteredReminders = reminders.filter((reminder) => {
     const reminderDate = new Date(reminder.date);
-    return (
-      reminderDate.getMonth() === currentDate.getMonth() &&
-      reminderDate.getFullYear() === currentDate.getFullYear()
-    );
+    const today = new Date();
+    
+    // Mostra todos os eventos futuros
+    return reminderDate >= today;
   });
 
   // Handle form submission
@@ -161,6 +162,7 @@ export default function RemindersPage() {
   return (
     <div>
       <Header />
+      <NavigationBar />
       <main className="container p-4 max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Lembretes</h1>
@@ -182,6 +184,17 @@ export default function RemindersPage() {
                 onSelect={(date) => date && setCurrentDate(date)}
                 className="rounded-md border"
                 locale={ptBR}
+                modifiers={{
+                  highlighted: reminders.map(reminder => new Date(reminder.date)),
+                }}
+                modifiersStyles={{
+                  highlighted: {
+                    backgroundColor: "rgba(220, 38, 38, 0.1)",
+                    color: "var(--primary)",
+                    fontWeight: "bold",
+                    borderRadius: "100%"
+                  }
+                }}
               />
             </CardContent>
           </Card>
@@ -189,7 +202,7 @@ export default function RemindersPage() {
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle>
-                Lembretes para {format(currentDate, "MMMM yyyy", { locale: ptBR })}
+                Próximos Lembretes
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -199,7 +212,7 @@ export default function RemindersPage() {
                 </div>
               ) : filteredReminders.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground">
-                  Nenhum lembrete encontrado para este mês.
+                  Nenhum lembrete futuro encontrado. Crie um novo lembrete!
                 </p>
               ) : (
                 <div className="space-y-4">

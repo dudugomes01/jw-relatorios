@@ -80,16 +80,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createActivity(userId: number, insertActivity: InsertActivity): Promise<Activity> {
+    console.log("Inserindo atividade para o usuário:", userId);
+    
+    // No drizzle, temos que usar os objetos de colunas diretamente
     const [activity] = await db
       .insert(activities)
       .values({
         type: insertActivity.type,
-        hours: String(insertActivity.hours), // Convertendo para string
+        hours: String(insertActivity.hours),
         date: insertActivity.date,
         notes: insertActivity.notes,
-        user_id: userId // Usando o nome da coluna no banco de dados
+        userId: userId // Usando a propriedade no modelo (não o nome da coluna no banco)
       })
       .returning();
+    
     return activity;
   }
 

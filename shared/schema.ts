@@ -43,14 +43,31 @@ export const activities = pgTable("activities", {
   notes: text("notes"),
 });
 
+// Reminders table
+export const reminders = pgTable("reminders", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  date: timestamp("date").notNull(),
+  description: text("description"),
+});
+
 // Define relations
 export const usersRelations = relations(users, ({ many }) => ({
-  activities: many(activities)
+  activities: many(activities),
+  reminders: many(reminders)
 }));
 
 export const activitiesRelations = relations(activities, ({ one }) => ({
   user: one(users, {
     fields: [activities.userId],
+    references: [users.id]
+  })
+}));
+
+export const remindersRelations = relations(reminders, ({ one }) => ({
+  user: one(users, {
+    fields: [reminders.userId],
     references: [users.id]
   })
 }));
@@ -101,9 +118,23 @@ export const insertActivitySchema = createInsertSchema(activities)
     notes: z.string().optional()
   });
 
+export const insertReminderSchema = createInsertSchema(reminders)
+  .pick({
+    title: true,
+    date: true,
+    description: true,
+  })
+  .extend({
+    title: z.string().min(1, { message: "Título é obrigatório" }),
+    date: z.coerce.date(),
+    description: z.string().optional()
+  });
+
 // Type exports
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
+export type InsertReminder = z.infer<typeof insertReminderSchema>;
 export type User = typeof users.$inferSelect;
 export type Activity = typeof activities.$inferSelect;
+export type Reminder = typeof reminders.$inferSelect;

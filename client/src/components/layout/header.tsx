@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Settings, Home } from "lucide-react";
+import { Settings, Home, Bell } from "lucide-react";
 
 export function Header() {
   const [, navigate] = useLocation();
@@ -20,6 +20,11 @@ export function Header() {
   // Handle navigation to home
   const navigateToHome = () => {
     navigate("/");
+  };
+  
+  // Handle navigation to reminders
+  const navigateToReminders = () => {
+    navigate("/lembretes");
   };
 
   return (
@@ -51,6 +56,11 @@ export function Header() {
                     <Home className="mr-2 h-4 w-4" />
                     Página inicial
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={navigateToReminders}>
+                    <Bell className="mr-2 h-4 w-4" />
+                    Lembretes
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={navigateToProfile}>
                     <Settings className="mr-2 h-4 w-4" />
                     Configurações

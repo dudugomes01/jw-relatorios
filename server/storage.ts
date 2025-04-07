@@ -1,4 +1,4 @@
-import { activities, users, type User, type InsertUser, type Activity, type InsertActivity, type UpdateUser } from "@shared/schema";
+import { activities, users, reminders, type User, type InsertUser, type Activity, type InsertActivity, type UpdateUser, type Reminder, type InsertReminder } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { db } from "./db";
@@ -19,6 +19,12 @@ export interface IStorage {
   getActivitiesByMonth(userId: number, year: number, month: number): Promise<Activity[]>;
   getActivity(id: number): Promise<Activity | undefined>;
   deleteActivity(id: number): Promise<void>; 
+  createReminder(userId: number, reminder: InsertReminder): Promise<Reminder>;
+  updateReminder(id: number, reminder: InsertReminder): Promise<Reminder | undefined>;
+  getReminders(userId: number): Promise<Reminder[]>;
+  getRemindersByMonth(userId: number, year: number, month: number): Promise<Reminder[]>;
+  getReminder(id: number): Promise<Reminder | undefined>;
+  deleteReminder(id: number): Promise<void>;
   sessionStore: any;
 }
 
@@ -148,6 +154,74 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(activities)
       .where(eq(activities.id, id));
+  }
+
+  async createReminder(userId: number, insertReminder: InsertReminder): Promise<Reminder> {
+    console.log("Inserindo lembrete para o usuário:", userId);
+    
+    const [reminder] = await db
+      .insert(reminders)
+      .values({
+        title: insertReminder.title,
+        date: insertReminder.date,
+        description: insertReminder.description,
+        userId: userId
+      })
+      .returning();
+    
+    return reminder;
+  }
+
+  async getReminders(userId: number): Promise<Reminder[]> {
+    return db
+      .select()
+      .from(reminders)
+      .where(eq(reminders.userId, userId))
+      .orderBy(desc(reminders.date));
+  }
+
+  async getRemindersByMonth(userId: number, year: number, month: number): Promise<Reminder[]> {
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0);
+    
+    return db
+      .select()
+      .from(reminders)
+      .where(
+        and(
+          eq(reminders.userId, userId),
+          gte(reminders.date, startDate),
+          lt(reminders.date, endDate)
+        )
+      )
+      .orderBy(desc(reminders.date));
+  }
+
+  async getReminder(id: number): Promise<Reminder | undefined> {
+    const [reminder] = await db
+      .select()
+      .from(reminders)
+      .where(eq(reminders.id, id));
+    return reminder;
+  }
+
+  async updateReminder(id: number, updateData: InsertReminder): Promise<Reminder | undefined> {
+    const [reminder] = await db
+      .update(reminders)
+      .set({
+        title: updateData.title,
+        date: updateData.date,
+        description: updateData.description
+      })
+      .where(eq(reminders.id, id))
+      .returning();
+    return reminder;
+  }
+
+  async deleteReminder(id: number): Promise<void> {
+    await db
+      .delete(reminders)
+      .where(eq(reminders.id, id));
   }
 }
 

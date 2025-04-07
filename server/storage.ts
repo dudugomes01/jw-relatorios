@@ -128,6 +128,23 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(activities.date));
   }
 
+  async getActivitiesByYearMonth(userId: number, year: number, month: number): Promise<Activity[]> {
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year + 1, month, 0);
+    
+    return db
+      .select()
+      .from(activities)
+      .where(
+        and(
+          eq(activities.userId, userId),
+          gte(activities.date, startDate),
+          lt(activities.date, endDate)
+        )
+      )
+      .orderBy(desc(activities.date));
+  }
+
   async getActivity(id: number): Promise<Activity | undefined> {
     const [activity] = await db
       .select()

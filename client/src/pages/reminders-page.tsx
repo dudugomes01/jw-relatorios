@@ -120,13 +120,20 @@ export default function RemindersPage() {
   });
 
   // Filtered reminders: all events in the future or all events for current month
-  const filteredReminders = reminders.filter((reminder) => {
-    const reminderDate = new Date(reminder.date);
-    const today = new Date();
-    
-    // Mostra todos os eventos futuros
-    return reminderDate >= today;
-  });
+  const filteredReminders = reminders
+    .filter((reminder) => {
+      const reminderDate = new Date(reminder.date);
+      const today = new Date();
+      
+      // Mostra todos os eventos futuros
+      return reminderDate >= today;
+    })
+    .sort((a, b) => {
+      // Ordena por data (mais próximo primeiro)
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      return dateA.getTime() - dateB.getTime();
+    });
 
   // Handle form submission
   const onSubmit = (values: ReminderFormValues) => {

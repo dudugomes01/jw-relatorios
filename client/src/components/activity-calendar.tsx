@@ -2,7 +2,20 @@ import { useCallback, useState } from "react";
 import { Activity, ActivityType } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Edit2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit2, Trash2 } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   format,
   startOfMonth,
@@ -40,6 +53,31 @@ interface ActivityCalendarProps {
   onDateChange: (date: Date) => void;
   onDayClick?: (date: Date) => void;
   onActivityEdit?: (activity: Activity) => void;
+}
+
+interface DeleteDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+function DeleteDialog({ isOpen, onClose, onConfirm }: DeleteDialogProps) {
+  return (
+    <AlertDialog open={isOpen} onOpenChange={onClose}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+          <AlertDialogDescription>
+            Tem certeza que deseja excluir esta atividade? Esta ação não pode ser desfeita.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onClose}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>Excluir</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
 
 export function ActivityCalendar({ 
@@ -86,14 +124,54 @@ export function ActivityCalendar({
     }
   };
 
+  const { toast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [selectedDayActivities, setSelectedDayActivities] = useState<Activity[]>([]);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [activityToDelete, setActivityToDelete] = useState<Activity | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (activityId: number) => {
+      await apiRequest("DELETE", `/api/activities/${activityId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Atividade excluída",
+        description: "A atividade foi excluída com sucesso."
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities/month"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao excluir",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
 
   const openModal = (day: Date) => {
     setSelectedDay(day);
     setSelectedDayActivities(getDayActivities(day));
     setIsModalOpen(true);
+  };
+
+  const handleDelete = (activity: Activity) => {
+    setActivityToDelete(activity);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (activityToDelete) {
+      await deleteMutation.mutateAsync(activityToDelete.id);
+      setIsDeleteDialogOpen(false);
+      setActivityToDelete(null);
+      if (selectedDay) {
+        setSelectedDayActivities(getDayActivities(selectedDay));
+      }
+    }
   };
 
 
@@ -212,6 +290,9 @@ export function ActivityCalendar({
                     <div>
                       <p className="font-medium">{ActivityLabels[activity.type as keyof typeof ActivityLabels]}</p>
                       <p className="text-sm text-gray-500">{activity.hours} horas</p>
+                      {activity.notes && (
+                        <p className="text-sm text-gray-500 mt-1">{activity.notes}</p>
+                      )}
                     </div>
                     <div className="flex space-x-2">
                       <Button
@@ -224,6 +305,13 @@ export function ActivityCalendar({
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(activity)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -232,6 +320,15 @@ export function ActivityCalendar({
           </div>
         </DialogContent>
       </Dialog>
+
+      <DeleteDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => {
+          setIsDeleteDialogOpen(false);
+          setActivityToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+      />
     </Card>
   );
 }

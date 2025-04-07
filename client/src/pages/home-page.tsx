@@ -82,6 +82,7 @@ export default function HomePage() {
           {/* Add Activity Button */}
           <div className="flex justify-end">
             <Button onClick={() => {
+              setActivityToEdit(null);
               const event = {} as React.MouseEvent<HTMLButtonElement>;
               openActivityForm(undefined);
             }}>

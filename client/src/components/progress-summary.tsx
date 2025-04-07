@@ -31,8 +31,29 @@ export function ProgressSummary({ activities, userRole }: ProgressSummaryProps) 
   // Calculate total hours for current month
   const totalMonthHours = calculateTotalHours(activities);
   
-  // Calculate total hours for the year
-  const totalYearHours = calculateTotalHours(activities); // Você precisará ajustar isso para filtrar por ano
+  // Calculate total hours for the service year (September to September)
+  const calculateServiceYearHours = (activities: Activity[]) => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+    
+    // Determine the service year start
+    const serviceYearStart = new Date(
+      currentMonth < 8 ? currentYear - 1 : currentYear, 
+      8, // September (0-based)
+      1
+    );
+    
+    return activities.reduce((total, activity) => {
+      const activityDate = new Date(activity.date);
+      if (activityDate >= serviceYearStart) {
+        return total + Number(activity.hours);
+      }
+      return total;
+    }, 0);
+  };
+
+  const totalYearHours = calculateServiceYearHours(activities); // Você precisará ajustar isso para filtrar por ano
   
   // Calculate progress percentages
   const monthProgressPercentage = monthlyGoal ? Math.min((totalMonthHours / monthlyGoal) * 100, 100) : 0;

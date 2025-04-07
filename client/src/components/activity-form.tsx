@@ -73,8 +73,8 @@ export function ActivityForm({ onSave, initialDate, activityToEdit }: ActivityFo
       notes: activityToEdit.notes || ""
     } : {
       type: ActivityType.CAMPO,
-      date: initialDate,
-      hours: 1,
+      date: initialDate || new Date(),
+      hours: 0,
       notes: ""
     }
   });

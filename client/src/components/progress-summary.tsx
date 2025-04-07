@@ -1,6 +1,10 @@
+
 import { Activity, UserRole } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
 import { calculateTotalHours } from "@/lib/utils/activity-utils";
 
 interface ProgressSummaryProps {
@@ -9,21 +13,30 @@ interface ProgressSummaryProps {
 }
 
 export function ProgressSummary({ activities, userRole }: ProgressSummaryProps) {
-  // Role-based goals
-  const roleGoals = {
-    [UserRole.PUBLICADOR]: 0, // No specific goal
-    [UserRole.PIONEIRO_AUXILIAR]: 30,
-    [UserRole.PIONEIRO_REGULAR]: 50
+  const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
+    return userRole === UserRole.PIONEIRO_REGULAR ? 50 : 
+           userRole === UserRole.PIONEIRO_AUXILIAR ? 30 : 0;
+  });
+  
+  // Role-based annual goals
+  const annualGoals = {
+    [UserRole.PUBLICADOR]: 0,
+    [UserRole.PIONEIRO_AUXILIAR]: 360, // 30 x 12
+    [UserRole.PIONEIRO_REGULAR]: 600 // 50 x 12
   };
 
-  // Get goal for current role
-  const goal = roleGoals[userRole as keyof typeof roleGoals] || 0;
+  // Get annual goal for current role
+  const annualGoal = annualGoals[userRole as keyof typeof annualGoals] || 0;
   
-  // Calculate total hours
-  const totalHours = calculateTotalHours(activities);
+  // Calculate total hours for current month
+  const totalMonthHours = calculateTotalHours(activities);
   
-  // Calculate progress percentage
-  const progressPercentage = goal ? Math.min((totalHours / goal) * 100, 100) : 0;
+  // Calculate total hours for the year
+  const totalYearHours = calculateTotalHours(activities); // Você precisará ajustar isso para filtrar por ano
+  
+  // Calculate progress percentages
+  const monthProgressPercentage = monthlyGoal ? Math.min((totalMonthHours / monthlyGoal) * 100, 100) : 0;
+  const yearProgressPercentage = annualGoal ? Math.min((totalYearHours / annualGoal) * 100, 100) : 0;
   
   // Count total activities
   const totalActivities = activities.length;
@@ -38,13 +51,23 @@ export function ProgressSummary({ activities, userRole }: ProgressSummaryProps) 
       ? "Pioneiro Auxiliar"
       : "Pioneiro Regular";
     
-    const remainingHours = Math.max(goal - totalHours, 0);
+    const remainingMonthHours = Math.max(monthlyGoal - totalMonthHours, 0);
+    const remainingYearHours = Math.max(annualGoal - totalYearHours, 0);
     
-    if (remainingHours === 0) {
-      return `${roleLabel} - Meta mensal atingida!`;
-    } else {
-      return `${roleLabel} - Faltam ${remainingHours} horas para atingir sua meta mensal.`;
-    }
+    return (
+      <div className="space-y-1">
+        <p>
+          {remainingMonthHours === 0 
+            ? `${roleLabel} - Meta mensal atingida!` 
+            : `${roleLabel} - Faltam ${remainingMonthHours} horas para a meta mensal.`}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {remainingYearHours === 0
+            ? "Meta anual atingida!"
+            : `Faltam ${remainingYearHours} horas para a meta anual.`}
+        </p>
+      </div>
+    );
   };
 
   return (
@@ -53,29 +76,60 @@ export function ProgressSummary({ activities, userRole }: ProgressSummaryProps) 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Current Month Summary */}
           <div className="md:col-span-2">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
-              Resumo do mês atual
-            </h3>
-            <div className="mt-5 flex items-center">
-              <div className="flex-1">
-                <div className="relative pt-1">
-                  <div className="flex mb-2 items-center justify-between">
-                    <div>
-                      <span className="text-xs font-semibold inline-block text-primary">
-                        Progresso de horas
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs font-semibold inline-block text-primary">
-                        {goal ? `${totalHours}h / ${goal}h` : `${totalHours}h`}
-                      </span>
-                    </div>
-                  </div>
-                  <Progress value={progressPercentage} className="h-2" />
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">
+                Resumo do mês atual
+              </h3>
+              {userRole === UserRole.PIONEIRO_REGULAR && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">Meta mensal:</span>
+                  <Input
+                    type="number"
+                    value={monthlyGoal}
+                    onChange={(e) => setMonthlyGoal(Number(e.target.value))}
+                    className="w-20"
+                    min="0"
+                    max="100"
+                  />
                 </div>
+              )}
+            </div>
+            <div className="space-y-4">
+              {/* Monthly Progress */}
+              <div className="relative pt-1">
+                <div className="flex mb-2 items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold inline-block text-primary">
+                      Progresso mensal
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-semibold inline-block text-primary">
+                      {monthlyGoal ? `${totalMonthHours}h / ${monthlyGoal}h` : `${totalMonthHours}h`}
+                    </span>
+                  </div>
+                </div>
+                <Progress value={monthProgressPercentage} className="h-2" />
+              </div>
+              
+              {/* Annual Progress */}
+              <div className="relative pt-1">
+                <div className="flex mb-2 items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold inline-block text-primary">
+                      Progresso anual
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-semibold inline-block text-primary">
+                      {annualGoal ? `${totalYearHours}h / ${annualGoal}h` : `${totalYearHours}h`}
+                    </span>
+                  </div>
+                </div>
+                <Progress value={yearProgressPercentage} className="h-2" />
               </div>
             </div>
-            <div className="mt-1 text-sm text-gray-500">
+            <div className="mt-3">
               {formatProgressMessage()}
             </div>
           </div>
@@ -91,7 +145,7 @@ export function ProgressSummary({ activities, userRole }: ProgressSummaryProps) 
                   Horas registradas
                 </dt>
                 <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                  {totalHours}h
+                  {totalMonthHours}h
                 </dd>
               </div>
               <div className="bg-white p-4 rounded-lg shadow-sm">

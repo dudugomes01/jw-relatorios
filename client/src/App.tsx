@@ -13,6 +13,7 @@ function Router() {
       <Route path="/" component={HomePage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/lembretes" component={RemindersPage} />
+      <Route path="/relatorios" component={ReportsPage} />
       <Route component={NotFound} />
     </Switch>
   );

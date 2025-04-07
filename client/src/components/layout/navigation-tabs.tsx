@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { useState, useEffect } from 'react'; // Added for state management
 
 interface NavigationTabsProps {
   activeTab: string;
@@ -6,14 +7,10 @@ interface NavigationTabsProps {
 
 export function NavigationTabs({ activeTab }: NavigationTabsProps) {
   const [, navigate] = useLocation();
-  
+
   // Handle tab switch
   const switchTab = (tab: string) => {
-    if (tab === "reports") {
-      navigate("/");
-    } else if (tab === "settings") {
-      navigate("/settings");
-    }
+    navigate(`/${tab}`); // Simplified navigation
   };
 
   return (
@@ -51,3 +48,70 @@ export function NavigationTabs({ activeTab }: NavigationTabsProps) {
     </div>
   );
 }
+
+
+// New components for reports and goal saving (placeholder implementations)
+function ReportsPage() {
+  // Fetch and display historical monthly summaries here.  This requires backend integration.
+  const [reportsData, setReportsData] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Replace with actual API call to fetch reports
+    const fetchData = async () => {
+      const response = await fetch('/api/reports'); //Example API call
+      const data = await response.json();
+      setReportsData(data);
+    };
+
+    fetchData();
+  }, []);
+
+  return (
+    <div>
+      <h1>Monthly Reports</h1>
+      {reportsData.map((report, index) => (
+        <div key={index}>
+          <h2>{report.month}</h2>
+          {/* Display report details here */}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProgressSummary() {
+  const [monthlyGoal, setMonthlyGoal] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = async () => {
+    if(monthlyGoal){
+        try {
+            const response = await fetch('/api/goals', { //Example API call
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({goal: monthlyGoal})
+            });
+            if(response.ok){
+                setSaved(true);
+            } else {
+                console.error("Failed to save goal");
+            }
+        } catch (error) {
+            console.error("Error saving goal", error);
+        }
+
+    }
+  };
+
+  return (
+    <div>
+        <input type="text" value={monthlyGoal} onChange={(e) => setMonthlyGoal(e.target.value)} placeholder="Enter your monthly goal" />
+        <button onClick={handleSave} disabled={saved}>Save Goal</button>
+        {saved && <p>Goal saved!</p>}
+    </div>
+  );
+}
+
+export {ReportsPage, ProgressSummary};

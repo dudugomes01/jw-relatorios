@@ -1,8 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { Activity, ActivityType } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit2 } from "lucide-react";
 import { 
   format,
   startOfMonth,
@@ -15,6 +15,8 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 
 // Activity type colors
 const ActivityColors = {
@@ -49,7 +51,7 @@ export function ActivityCalendar({
 }: ActivityCalendarProps) {
   // Ensure date is a valid Date object
   const currentDate = date instanceof Date ? date : new Date(date);
-  
+
   // Create calendar for month
   const month = startOfMonth(currentDate);
   const monthEnd = endOfMonth(month);
@@ -83,6 +85,17 @@ export function ActivityCalendar({
       onDayClick(day);
     }
   };
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [selectedDayActivities, setSelectedDayActivities] = useState<Activity[]>([]);
+
+  const openModal = (day: Date) => {
+    setSelectedDay(day);
+    setSelectedDayActivities(getDayActivities(day));
+    setIsModalOpen(true);
+  };
+
 
   return (
     <Card>
@@ -131,7 +144,7 @@ export function ActivityCalendar({
                   "bg-white px-2 py-3 relative h-24 cursor-pointer hover:bg-gray-50",
                   isCurrentDay && "bg-primary/5 ring-2 ring-primary ring-inset"
                 )}
-                onClick={() => handleDayClick(day)}
+                onClick={() => openModal(day)}
               >
                 <time 
                   dateTime={format(day, "yyyy-MM-dd")} 
@@ -180,6 +193,45 @@ export function ActivityCalendar({
           ))}
         </div>
       </CardContent>
+
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              Atividades do dia {selectedDay ? format(selectedDay, "dd 'de' MMMM", { locale: ptBR }) : ""}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-4">
+            {selectedDayActivities.length === 0 ? (
+              <p className="text-center text-gray-500">Nenhuma atividade registrada neste dia.</p>
+            ) : (
+              <div className="space-y-4">
+                {selectedDayActivities.map((activity) => (
+                  <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium">{ActivityLabels[activity.type as keyof typeof ActivityLabels]}</p>
+                      <p className="text-sm text-gray-500">{activity.hours} horas</p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setIsModalOpen(false);
+                          if (onActivityEdit) onActivityEdit(activity);
+                        }}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

@@ -85,7 +85,14 @@ export default function ReportsPage() {
                 </Select>
               </div>
 
-              <div className="mt-6">
+              <div className="mt-6 space-y-6">
+                <div className="bg-white p-6 rounded-lg shadow-sm border">
+                  <h3 className="text-lg font-medium text-gray-700 mb-2">Total de Horas no Mês</h3>
+                  <p className="text-4xl font-bold text-primary">
+                    {activities.reduce((total, activity) => total + Number(activity.hours), 0)}h
+                  </p>
+                </div>
+
                 <h3 className="text-lg font-medium mb-4">Horas por Tipo de Atividade</h3>
                 <div className="h-80 w-full">
                   <ResponsiveContainer width="100%" height="100%">

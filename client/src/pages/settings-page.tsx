@@ -1,32 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { UserRole } from "@shared/schema";
-import { 
+import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Header } from "@/components/layout/header";
 import { NavigationBar } from "@/components/layout/navigation-bar";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth"; // Importação do hook de autenticação
 
 // Form schema for user settings
 const formSchema = z.object({
@@ -34,10 +41,10 @@ const formSchema = z.object({
   lastName: z.string().min(1, "Sobrenome é obrigatório"),
   email: z.string().email("Email inválido"),
   role: z.enum([
-    UserRole.PUBLICADOR, 
-    UserRole.PIONEIRO_AUXILIAR, 
-    UserRole.PIONEIRO_REGULAR
-  ])
+    UserRole.PUBLICADOR,
+    UserRole.PIONEIRO_AUXILIAR,
+    UserRole.PIONEIRO_REGULAR,
+  ]),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -45,58 +52,91 @@ type FormValues = z.infer<typeof formSchema>;
 export default function SettingsPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { user, logoutMutation, updateUserMutation, isLoading } = useAuth(); // Hook para autenticação
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Usuário de demonstração
-  const demoUser = {
-    firstName: "João",
-    lastName: "Silva",
-    email: "usuario@exemplo.com",
-    role: UserRole.PIONEIRO_REGULAR
-  };
-  
-  // Form setup with demo data
+
+  // Redirecionar se o usuário não estiver autenticado
+  useEffect(() => {
+    if (!user && !isLoading) {
+      navigate("/auth");
+    }
+  }, [user, isLoading, navigate]);
+
+  // Configurar o formulário com os dados do usuário autenticado
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      firstName: demoUser.firstName,
-      lastName: demoUser.lastName,
-      email: demoUser.email,
-      role: demoUser.role
-    }
+      firstName: user?.firstName || "",
+      lastName: user?.lastName || "",
+      email: user?.email || "",
+      role:
+        (user?.role as (typeof UserRole)[keyof typeof UserRole]) ||
+        UserRole.PUBLICADOR,
+    },
   });
 
-  // Handle form submission (simulado)
+  // Handle form submission
   const onSubmit = (values: FormValues) => {
     setIsSubmitting(true);
-    
-    // Simulando um envio de dados
-    setTimeout(() => {
-      toast({
-        title: "Configurações salvas",
-        description: "Suas preferências foram atualizadas com sucesso."
-      });
-      setIsSubmitting(false);
-    }, 1000);
+
+    updateUserMutation.mutate(values, {
+      onSuccess: () => {
+        toast({
+          title: "Configurações salvas",
+          description: "Suas preferências foram atualizadas com sucesso.",
+        });
+        setIsSubmitting(false);
+      },
+      onError: (error: Error) => {
+        toast({
+          title: "Erro ao salvar configurações",
+          description: error.message,
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+      },
+    });
   };
+
+  // Handle logout
+  const handleLogout = () => {
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        navigate("/auth"); // Redireciona para a página de login após o logout
+      },
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
       <NavigationBar />
-      
+
       <main className="flex-1 overflow-y-auto bg-gray-50">
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 space-y-6">
           {/* User Profile */}
           <Card>
             <CardHeader>
               <CardTitle>Perfil do usuário</CardTitle>
-              <CardDescription>Informações pessoais e configurações</CardDescription>
+              <CardDescription>
+                Informações pessoais e configurações
+              </CardDescription>
             </CardHeader>
-            
+
             <CardContent>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-6"
+                >
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <FormField
                       control={form.control}
@@ -111,7 +151,7 @@ export default function SettingsPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="lastName"
@@ -126,7 +166,7 @@ export default function SettingsPage() {
                       )}
                     />
                   </div>
-                  
+
                   <FormField
                     control={form.control}
                     name="email"
@@ -144,15 +184,15 @@ export default function SettingsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="role"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Seu papel</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
+                        <Select
+                          onValueChange={field.onChange}
                           defaultValue={field.value}
                         >
                           <FormControl>
@@ -161,36 +201,50 @@ export default function SettingsPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value={UserRole.PUBLICADOR}>Publicador</SelectItem>
-                            <SelectItem value={UserRole.PIONEIRO_AUXILIAR}>Pioneiro Auxiliar</SelectItem>
-                            <SelectItem value={UserRole.PIONEIRO_REGULAR}>Pioneiro Regular</SelectItem>
+                            <SelectItem value={UserRole.PUBLICADOR}>
+                              Publicador
+                            </SelectItem>
+                            <SelectItem value={UserRole.PIONEIRO_AUXILIAR}>
+                              Pioneiro Auxiliar
+                            </SelectItem>
+                            <SelectItem value={UserRole.PIONEIRO_REGULAR}>
+                              Pioneiro Regular
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                         <FormDescription>
-                          Esta configuração determina suas metas mensais de horas.
+                          Esta configuração determina suas metas mensais de
+                          horas.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
-                  <div className="flex justify-end">
+
+                  <div className="flex justify-end space-x-2">
                     <Button
                       type="button"
                       variant="outline"
-                      className="mr-2"
                       onClick={() => navigate("/")}
+                      disabled={!form.formState.isDirty} // Desabilita o botão se o formulário não foi alterado
                     >
                       Cancelar
                     </Button>
-                    <Button 
+                    <Button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !form.formState.isDirty} // Desabilita o botão se o formulário não foi alterado ou está enviando
                     >
                       {isSubmitting ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : null}
                       Salvar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={handleLogout}
+                    >
+                      Sair
                     </Button>
                   </div>
                 </form>

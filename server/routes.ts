@@ -6,57 +6,32 @@ import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { Router } from 'express'; // Import express.Router
 
-// ID de usuário de demonstração, usado para todas as operações
-const DEMO_USER_ID = 1;
 
-// Garantir que o usuário demo existe
-async function ensureDemoUser() {
-  let demoUser = await storage.getUser(DEMO_USER_ID);
-
-  if (!demoUser) {
-    console.log("Criando usuário de demonstração...");
-    try {
-      demoUser = await storage.createUser({
-        username: "demo",
-        password: "password", // Não será usado, apenas para o schema
-        email: "demo@example.com",
-        firstName: "João",
-        lastName: "Silva"
-      });
-
-      // Atualizar o papel após criar
-      if (demoUser) {
-        demoUser = await storage.updateUser(demoUser.id, {
-          role: UserRole.PIONEIRO_REGULAR
-        });
-      }
-
-      console.log("Usuário de demonstração criado:", demoUser?.id);
-    } catch (error) {
-      console.error("Erro ao criar usuário demo:", error);
-    }
+// Middleware para verificar autenticação e obter ID do usuário
+function getUserId(req: any): number {
+  if (req.isAuthenticated && req.isAuthenticated() && req.user && req.user.id) {
+    console.log("Usando ID do usuário autenticado:", req.user.id);
+    return req.user.id;
   }
-
-  return demoUser;
+  
+  throw new Error("Usuário não autenticado");
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Certifica-se que o usuário demo existe
-  const demoUser = await ensureDemoUser();
 
-  const router = Router(); // Initialize the router
+  const router = Router(); 
 
-  // Get activities for service year
   router.get('/activities/year/:year/:month', async (req, res) => {
     const year = parseInt(req.params.year);
     const month = parseInt(req.params.month);
+    const userId = getUserId(req);
 
     if (isNaN(year) || isNaN(month) || month < 0 || month > 11) {
       return res.status(400).json({ message: "Ano ou mês inválido" });
     }
 
     try {
-      const activities = await storage.getActivitiesByYearMonth(DEMO_USER_ID, year, month);
+      const activities = await storage.getActivitiesByYearMonth(userId, year, month);
       res.json(activities);
     } catch (error) {
       console.error('Error fetching activities:', error);
@@ -64,27 +39,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.use('/api', router);
 
-  app.use('/api', router); // Use the router for /api routes
-
-  // Retorna o usuário demo (sem autenticação)
-  app.get("/api/user", async (req, res) => {
-    const user = await storage.getUser(DEMO_USER_ID);
-    if (!user) {
-      return res.status(404).json({ message: "Usuário não encontrado" });
+  app.get("/api/user", (req, res) => {
+    if (!req.isAuthenticated()) {
+      console.log("Usuário não autenticado"); 
+      return res.json(null);
     }
-
-    // Remove senha do retorno
-    const { password, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
+    console.log("Usuário autenticado:", req.user); 
+    res.json(req.user);
   });
 
-  // User profile routes (usando usuário demo)
+  // User profile routes (usando usuário autenticado)
   app.put("/api/user", async (req, res, next) => {
     try {
+      const userId = getUserId(req);
       const userData = updateUserSchema.parse(req.body);
 
-      const updatedUser = await storage.updateUser(DEMO_USER_ID, userData);
+      const updatedUser = await storage.updateUser(userId, userData);
       if (!updatedUser) {
         return res.status(404).json({ message: "Usuário não encontrado" });
       }
@@ -101,12 +73,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Activity routes (usando usuário demo)
+  // Activity routes (usando usuário autenticado)
   app.post("/api/activities", async (req, res, next) => {
     try {
+      const userId = getUserId(req);
       const activityData = insertActivitySchema.parse(req.body);
 
-      const newActivity = await storage.createActivity(DEMO_USER_ID, activityData);
+      const newActivity = await storage.createActivity(userId, activityData);
       res.status(201).json(newActivity);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -118,11 +91,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/activities", async (req, res) => {
-    const activities = await storage.getActivities(DEMO_USER_ID);
+    const userId = getUserId(req);
+    const activities = await storage.getActivities(userId);
     res.json(activities);
   });
 
   app.get("/api/activities/month/:year/:month", async (req, res) => {
+    const userId = getUserId(req);
     const year = parseInt(req.params.year);
     const month = parseInt(req.params.month);
 
@@ -130,11 +105,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ message: "Ano ou mês inválido" });
     }
 
-    const activities = await storage.getActivitiesByMonth(DEMO_USER_ID, year, month);
+    const activities = await storage.getActivitiesByMonth(userId, year, month);
     res.json(activities);
   });
 
   app.get("/api/activities/:id", async (req, res) => {
+    const userId = getUserId(req);
     const activityId = parseInt(req.params.id);
     if (isNaN(activityId)) {
       return res.status(400).json({ message: "ID de atividade inválido" });
@@ -145,8 +121,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "Atividade não encontrada" });
     }
 
-    // Ainda checamos se a atividade pertence ao usuário demo
-    if (activity.userId !== DEMO_USER_ID) {
+    // Verificar se a atividade pertence ao usuário autenticado
+    if (activity.userId !== userId) {
       return res.status(403).json({ message: "Acesso não autorizado" });
     }
 
@@ -155,6 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/activities/:id", async (req, res, next) => {
     try {
+      const userId = getUserId(req);
       const activityId = parseInt(req.params.id);
       if (isNaN(activityId)) {
         return res.status(400).json({ message: "ID de atividade inválido" });
@@ -165,7 +142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Atividade não encontrada" });
       }
 
-      if (activity.userId !== DEMO_USER_ID) {
+      if (activity.userId !== userId) {
         return res.status(403).json({ message: "Acesso não autorizado" });
       }
 
@@ -183,6 +160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete("/api/activities/:id", async (req, res) => {
+    const userId = getUserId(req);
     const activityId = parseInt(req.params.id);
     if (isNaN(activityId)) {
       return res.status(400).json({ message: "ID de atividade inválido" });
@@ -193,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "Atividade não encontrada" });
     }
 
-    if (activity.userId !== DEMO_USER_ID) {
+    if (activity.userId !== userId) {
       return res.status(403).json({ message: "Acesso não autorizado" });
     }
 
@@ -204,9 +182,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rotas para lembretes
   app.post("/api/reminders", async (req, res, next) => {
     try {
+      const userId = getUserId(req);
       const reminderData = insertReminderSchema.parse(req.body);
 
-      const newReminder = await storage.createReminder(DEMO_USER_ID, reminderData);
+      const newReminder = await storage.createReminder(userId, reminderData);
       res.status(201).json(newReminder);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -218,11 +197,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/reminders", async (req, res) => {
-    const reminders = await storage.getReminders(DEMO_USER_ID);
+    const userId = getUserId(req);
+    const reminders = await storage.getReminders(userId);
     res.json(reminders);
   });
 
   app.get("/api/reminders/month/:year/:month", async (req, res) => {
+    const userId = getUserId(req);
     const year = parseInt(req.params.year);
     const month = parseInt(req.params.month);
 
@@ -230,11 +211,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ message: "Ano ou mês inválido" });
     }
 
-    const reminders = await storage.getRemindersByMonth(DEMO_USER_ID, year, month);
+    const reminders = await storage.getRemindersByMonth(userId, year, month);
     res.json(reminders);
   });
 
   app.get("/api/reminders/:id", async (req, res) => {
+    const userId = getUserId(req);
     const reminderId = parseInt(req.params.id);
     if (isNaN(reminderId)) {
       return res.status(400).json({ message: "ID de lembrete inválido" });
@@ -245,7 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "Lembrete não encontrado" });
     }
 
-    if (reminder.userId !== DEMO_USER_ID) {
+    if (reminder.userId !== userId) {
       return res.status(403).json({ message: "Acesso não autorizado" });
     }
 
@@ -254,6 +236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/reminders/:id", async (req, res, next) => {
     try {
+      const userId = getUserId(req);
       const reminderId = parseInt(req.params.id);
       if (isNaN(reminderId)) {
         return res.status(400).json({ message: "ID de lembrete inválido" });
@@ -264,7 +247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Lembrete não encontrado" });
       }
 
-      if (reminder.userId !== DEMO_USER_ID) {
+      if (reminder.userId !== userId) {
         return res.status(403).json({ message: "Acesso não autorizado" });
       }
 
@@ -282,6 +265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete("/api/reminders/:id", async (req, res) => {
+    const userId = getUserId(req);
     const reminderId = parseInt(req.params.id);
     if (isNaN(reminderId)) {
       return res.status(400).json({ message: "ID de lembrete inválido" });
@@ -292,7 +276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "Lembrete não encontrado" });
     }
 
-    if (reminder.userId !== DEMO_USER_ID) {
+    if (reminder.userId !== userId) {
       return res.status(403).json({ message: "Acesso não autorizado" });
     }
 

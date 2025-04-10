@@ -142,20 +142,20 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
+    passport.authenticate("local", (err: Error | null, user: Express.User | false, info: { message?: string }) => {
       if (err) {
         return next(err);
       }
       if (!user) {
-        return res.status(401).json({ message: info.message || "Credenciais inválidas" });
+        return res.status(401).json({ message: info?.message || "Credenciais inválidas" });
       }
-      req.login(user, (err) => {
+      req.login(user, (err: Error | null) => {
         if (err) {
           return next(err);
         }
-        
+  
         // Remove password from response
-        const { password, ...userWithoutPassword } = user;
+        const { password, ...userWithoutPassword } = user as Express.User;
         return res.status(200).json(userWithoutPassword);
       });
     })(req, res, next);

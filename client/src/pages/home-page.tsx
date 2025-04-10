@@ -11,12 +11,15 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import { getCurrentMonthYear } from "@/lib/utils/date-utils";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function HomePage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [activityToEdit, setActivityToEdit] = useState<Activity | null>(null);
   const { year, month } = getCurrentMonthYear(selectedDate);
+  const { user } = useAuth();
+
   
   // Usuário fixo para fins de demonstração
   const demoUser = {
@@ -39,9 +42,9 @@ export default function HomePage() {
 
   // Fetch activities for the current month
   const { data: activities = [] } = useQuery<Activity[]>({
-    queryKey: ["/api/activities/month", year, month],
+    queryKey: ["/api/activities"],
     queryFn: async () => {
-      const response = await fetch(`/api/activities/month/${year}/${month}`);
+      const response = await fetch("/api/activities");
       if (!response.ok) throw new Error("Failed to fetch activities");
       return response.json();
     },

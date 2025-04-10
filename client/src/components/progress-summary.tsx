@@ -278,11 +278,10 @@ export function ProgressSummary({
   const [totalYearHours, setTotalYearHours] = useState(0);
 
   useEffect(() => {
-    // Só buscar horas anuais se for pioneiro regular
     if (isPioneiroRegular) {
       calculateServiceYearHours().then(setTotalYearHours);
     }
-  }, [isPioneiroRegular]); // Dependência ajustada para incluir o valor atual de isPioneiroRegular
+  }, [isPioneiroRegular]);
 
   // Calculate progress percentages
   const monthProgressPercentage = monthlyGoal

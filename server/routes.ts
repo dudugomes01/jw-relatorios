@@ -21,6 +21,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const router = Router(); 
 
+  router.get("/user-role", async (req, res) => {
+    try {
+      // Verificar se o usuário está autenticado
+      const userId = getUserId(req);
+  
+      // Buscar o usuário no banco de dados
+      const user = await storage.getUser(userId);
+      if (!user) {
+        console.warn(`Usuário com ID ${userId} não encontrado.`);
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+  
+      // Garantir que role é uma string válida
+      const role = user.role ? String(user.role) : '';
+      console.log(`Papel do usuário ${userId}: ${role} (tipo: ${typeof role})`);
+  
+      // Validar o papel do usuário
+      const validRoles = Object.values(UserRole) as string[];
+      if (!validRoles.includes(role)) {
+        console.error(`Papel inválido encontrado para o usuário ${userId}: ${role}`);
+        // Em vez de retornar erro, fornece um valor padrão
+        return res.json({ role: UserRole.PUBLICADOR });
+      }
+  
+      // Retornar o papel do usuário
+      return res.json({ role });
+    } catch (error) {
+      // Tratar erros de autenticação
+      if (error instanceof Error && error.message === "Usuário não autenticado") {
+        console.warn("Tentativa de acesso não autenticada.");
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+  
+      // Logar outros erros e retornar erro genérico
+      console.error("Erro ao buscar papel do usuário:", error);
+      return res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
   router.get('/activities/year/:year/:month', async (req, res) => {
     const year = parseInt(req.params.year);
     const month = parseInt(req.params.month);
@@ -41,13 +80,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.use('/api', router);
 
-  app.get("/api/user", (req, res) => {
+  app.get("/api/user", async (req, res) => {
     if (!req.isAuthenticated()) {
       console.log("Usuário não autenticado"); 
-      return res.json(null);
+      return res.status(401).json({ error: "Usuário não autenticado" });
     }
-    console.log("Usuário autenticado:", req.user); 
-    res.json(req.user);
+    
+    try {
+      const userId = req.user.id;
+      // Buscar dados completos e atualizados do usuário
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+      
+      // Remove password from response
+      const { password, ...userWithoutPassword } = user;
+      console.log("Usuário autenticado:", userWithoutPassword);
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Erro ao buscar usuário:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
   });
 
   // User profile routes (usando usuário autenticado)
